@@ -981,7 +981,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "zip-inspector"
+name = "zipcrawl"
 version = "0.1.0"
 dependencies = [
  "clap",
