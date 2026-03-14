@@ -1,70 +1,139 @@
+use clap::{Parser, Subcommand};
 use regex::Regex;
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::{Command, Stdio};
 use zip::ZipArchive;
 
+#[derive(Parser)]
+#[command(name = "zipcrawl")]
+struct Cli {
+    #[arg(required = true)]
+    zip_path: String,
+
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    Tree {
+        #[arg(short, long, default_value = "2")]
+        depth: usize,
+    },
+    Cat {
+        file: String,
+    },
+    Find {
+        regex: String,
+    },
+    Grep {
+        pattern: String,
+    },
+}
+
+struct Node {
+    name: String,
+    is_dir: bool,
+    children: BTreeMap<String, Node>,
+}
+
+impl Node {
+    fn new(name: &str, is_dir: bool) -> Self {
+        Self {
+            name: name.to_string(),
+            is_dir,
+            children: BTreeMap::new(),
+        }
+    }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
+    let subcommands = ["tree", "cat", "find", "grep"];
 
-    if args.len() < 2 || args.contains(&"-h".to_string()) || args.contains(&"--help".to_string()) {
-        println!("Usage: zipcrawl <command> <argument> <files...>");
-        println!("\nCommands:");
-        println!("  tree <depth>    Show archive structure up to depth");
-        println!("  cat  <file>     Print content of a specific file");
-        println!("  find <regex>    Search for filenames matching regex");
-        println!("  grep <pattern>  Search for text pattern inside all files");
-        println!("\nExample: zipcrawl cat config.json ./data.zip");
-        std::process::exit(0);
+    let mut zip_paths = Vec::new();
+    let mut sub_args = Vec::new();
+    let mut found_sub = false;
+
+    for arg in args.into_iter().skip(1) {
+        if !found_sub && subcommands.contains(&arg.as_str()) {
+            found_sub = true;
+        }
+
+        if found_sub {
+            sub_args.push(arg);
+        } else {
+            zip_paths.push(arg);
+        }
     }
 
-    if args.len() < 4 && args[1] != "tree" {
-        eprintln!("Error: Missing arguments. Use -h for help.");
-        std::process::exit(1);
+    if zip_paths.is_empty() || sub_args.is_empty() {
+        let _ = Cli::parse_from(vec!["zipcrawl", "--help"]);
+        return Ok(());
     }
 
-    let subcommand = &args[1];
-    let target = args.get(2).map(|s| s.as_str()).unwrap_or("2");
-    let zip_paths = &args[3..];
+    let mut dummy_args = vec!["zipcrawl".to_string(), zip_paths[0].clone()];
+    dummy_args.extend(sub_args);
+    let cli = Cli::parse_from(dummy_args);
 
     for path_str in zip_paths {
-        let path = PathBuf::from(path_str);
-        if let Err(e) = process_zip(&path, subcommand, target) {
+        let path = Path::new(&path_str);
+        if let Err(e) = process_zip(path, &cli.command) {
             eprintln!("Error in {:?}: {}", path, e);
         }
+        println!();
     }
 
     Ok(())
 }
 
-fn process_zip(path: &PathBuf, cmd: &str, target: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn process_zip(path: &Path, cmd: &Commands) -> Result<(), Box<dyn std::error::Error>> {
     let file = File::open(path)?;
     let mut archive = ZipArchive::new(file)?;
 
     match cmd {
-        "tree" => {
-            let depth: usize = target.parse().unwrap_or(2);
-            println!("📦 Archive: {:?}", path);
+        Commands::Tree { depth } => {
+            println!("📦 {:?}", path);
+            let mut root = Node::new("root", true);
+
             for i in 0..archive.len() {
-                let file = archive.by_index(i)?;
-                let name = file.name();
-                let current_depth = name.split('/').filter(|s| !s.is_empty()).count();
-                if current_depth <= depth {
-                    let indent = "  ".repeat(current_depth.saturating_sub(1));
-                    let icon = if file.is_dir() { "󰉋" } else { "󰈔" };
-                    println!("{} {} {}", indent, icon, name);
+                if let Ok(file) = archive.by_index(i) {
+                    let name = file.name();
+                    let parts: Vec<&str> = name.split('/').filter(|s| !s.is_empty()).collect();
+
+                    if parts.is_empty() || parts.len() > *depth {
+                        continue;
+                    }
+
+                    let mut current = &mut root;
+                    for (idx, part) in parts.iter().enumerate() {
+                        let is_last = idx == parts.len() - 1;
+                        let is_dir = if is_last { name.ends_with('/') } else { true };
+
+                        current = current
+                            .children
+                            .entry(part.to_string())
+                            .or_insert_with(|| Node::new(part, is_dir));
+                    }
                 }
             }
+
+            let child_count = root.children.len();
+            for (i, (_, node)) in root.children.iter().enumerate() {
+                draw_node(node, "", i == child_count - 1);
+            }
         }
-        "cat" => {
-            let mut file = archive.by_name(target)?;
+        Commands::Cat { file: target_file } => {
+            let mut file = archive.by_name(target_file)?;
             let mut content = String::new();
             file.read_to_string(&mut content)?;
-            println!("{}", content);
+            print!("{}", content);
         }
-        "find" => {
-            let re = Regex::new(target)?;
+        Commands::Find { regex } => {
+            let re = Regex::new(regex)?;
             for i in 0..archive.len() {
                 let file = archive.by_index(i)?;
                 if re.is_match(file.name()) {
@@ -72,7 +141,7 @@ fn process_zip(path: &PathBuf, cmd: &str, target: &str) -> Result<(), Box<dyn st
                 }
             }
         }
-        "grep" => {
+        Commands::Grep { pattern } => {
             for i in 0..archive.len() {
                 let mut file = archive.by_index(i)?;
                 if file.is_file() {
@@ -80,7 +149,7 @@ fn process_zip(path: &PathBuf, cmd: &str, target: &str) -> Result<(), Box<dyn st
                     if file.read_to_end(&mut buffer).is_ok() {
                         let mut child = Command::new("rg")
                             .arg("--color=always")
-                            .arg(target)
+                            .arg(pattern)
                             .stdin(Stdio::piped())
                             .stdout(Stdio::piped())
                             .spawn()?;
@@ -98,8 +167,20 @@ fn process_zip(path: &PathBuf, cmd: &str, target: &str) -> Result<(), Box<dyn st
                 }
             }
         }
-        _ => eprintln!("Unknown command: {}", cmd),
     }
     Ok(())
 }
 
+fn draw_node(node: &Node, prefix: &str, is_last: bool) {
+    let connector = if is_last { "└── " } else { "├── " };
+    let icon = if node.is_dir { "󰉋" } else { "󰈔" };
+
+    println!("{}{}{} {}", prefix, connector, icon, node.name);
+
+    let new_prefix = format!("{}{}", prefix, if is_last { "    " } else { "│   " });
+    let child_count = node.children.len();
+
+    for (i, (_, child)) in node.children.iter().enumerate() {
+        draw_node(child, &new_prefix, i == child_count - 1);
+    }
+}
