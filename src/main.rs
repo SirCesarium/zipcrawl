@@ -26,6 +26,7 @@ enum Commands {
     Cat {
         file: String,
     },
+    List,
     Find {
         regex: String,
     },
@@ -52,7 +53,7 @@ impl Node {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
-    let subcommands = ["tree", "cat", "find", "grep"];
+    let subcommands = ["tree", "cat", "list", "find", "grep"];
 
     let mut zip_paths = Vec::new();
     let mut sub_args = Vec::new();
@@ -131,6 +132,14 @@ fn process_zip(path: &Path, cmd: &Commands) -> Result<(), Box<dyn std::error::Er
             let mut content = String::new();
             file.read_to_string(&mut content)?;
             print!("{}", content);
+        }
+        Commands::List => {
+            for i in 0..archive.len() {
+                let file = archive.by_index(i)?;
+                if !file.name().ends_with('/') {
+                    println!("{}", file.name());
+                }
+            }
         }
         Commands::Find { regex } => {
             let re = Regex::new(regex)?;
