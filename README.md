@@ -60,6 +60,7 @@ zipcrawl bundle.zip cat config.json | mold --lang rust
 | --- | --- | --- |
 | `tree` | Show archive structure | `--depth <N>` (Default: 2) |
 | `cat` | Output file content to stdout | `<FILE_PATH>` |
+| `list` | List files in archive | |
 | `find` | Search files by name (Regex) | `<REGEX>` |
 | `grep` | Search inside file contents | `<PATTERN>` |
 
