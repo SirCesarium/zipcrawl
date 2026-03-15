@@ -20,7 +20,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Tree {
-        #[arg(short, long, default_value = "2")]
+        #[arg(short, long, default_value = "4")]
         depth: usize,
     },
     Cat {
@@ -105,12 +105,17 @@ fn process_zip(path: &Path, cmd: &Commands) -> Result<(), Box<dyn std::error::Er
                     let name = file.name();
                     let parts: Vec<&str> = name.split('/').filter(|s| !s.is_empty()).collect();
 
-                    if parts.is_empty() || parts.len() > *depth {
+                    if parts.is_empty() {
                         continue;
                     }
-
                     let mut current = &mut root;
                     for (idx, part) in parts.iter().enumerate() {
+                        let current_depth = idx + 1;
+
+                        if current_depth > *depth {
+                            break;
+                        }
+
                         let is_last = idx == parts.len() - 1;
                         let is_dir = if is_last { name.ends_with('/') } else { true };
 
