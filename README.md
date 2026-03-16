@@ -47,10 +47,10 @@ zipcrawl modpack.mrpack grep "fabric-loader"
 
 ### Pipe to other tools
 
-Integrates perfectly with tools like [`mold`](https://github.com/SirCesarium/mold) for schema generation:
+Integrates perfectly with tools like [`type-forge`](https://github.com/SirCesarium/type-forge) for schema generation:
 
 ```bash
-zipcrawl bundle.zip cat config.json | mold --lang rust
+zipcrawl bundle.zip cat config.json | type-forge --lang rust
 
 ```
 
