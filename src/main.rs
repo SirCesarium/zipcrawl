@@ -1,4 +1,7 @@
+mod errors;
+
 use clap::{Parser, Subcommand};
+use miette::IntoDiagnostic;
 use regex::Regex;
 use std::collections::BTreeMap;
 use std::fs::File;
@@ -6,6 +9,8 @@ use std::io::{Read, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
 use zip::ZipArchive;
+
+use crate::errors::ZipCrawlError;
 
 #[derive(Parser)]
 #[command(name = "zipcrawl")]
@@ -51,7 +56,9 @@ impl Node {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> miette::Result<()> {
+    miette::set_panic_hook();
+
     let args: Vec<String> = std::env::args().collect();
     let subcommands = ["tree", "cat", "list", "find", "grep"];
 
@@ -83,7 +90,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for path_str in zip_paths {
         let path = Path::new(&path_str);
         if let Err(e) = process_zip(path, &cli.command) {
-            eprintln!("Error in {:?}: {}", path, e);
+            eprintln!("{:?}", e);
         }
         println!();
     }
@@ -91,9 +98,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn process_zip(path: &Path, cmd: &Commands) -> Result<(), Box<dyn std::error::Error>> {
-    let file = File::open(path)?;
-    let mut archive = ZipArchive::new(file)?;
+fn process_zip(path: &Path, cmd: &Commands) -> miette::Result<()> {
+    let file = File::open(path).map_err(|e| ZipCrawlError::IoError {
+        path: path.to_string_lossy().to_string(),
+        source: e,
+    })?;
+    let mut archive = ZipArchive::new(file).into_diagnostic()?;
 
     match cmd {
         Commands::Tree { depth } => {
@@ -133,23 +143,35 @@ fn process_zip(path: &Path, cmd: &Commands) -> Result<(), Box<dyn std::error::Er
             }
         }
         Commands::Cat { file: target_file } => {
-            let mut file = archive.by_name(target_file)?;
+            let mut file =
+                archive
+                    .by_name(target_file)
+                    .map_err(|_| ZipCrawlError::FileNotFound {
+                        filename: target_file.clone(),
+                    })?;
             let mut content = String::new();
-            file.read_to_string(&mut content)?;
+            file.read_to_string(&mut content)
+                .map_err(|e| ZipCrawlError::IoError {
+                    path: format!("Inside ZIP: {}", target_file),
+                    source: e,
+                })?;
             print!("{}", content);
         }
         Commands::List => {
             for i in 0..archive.len() {
-                let file = archive.by_index(i)?;
+                let file = archive.by_index(i).into_diagnostic()?;
                 if !file.name().ends_with('/') {
                     println!("{}", file.name());
                 }
             }
         }
         Commands::Find { regex } => {
-            let re = Regex::new(regex)?;
+            let re = Regex::new(regex).map_err(|e| ZipCrawlError::InvalidRegex {
+                regex: regex.clone(),
+                source: e,
+            })?;
             for i in 0..archive.len() {
-                let file = archive.by_index(i)?;
+                let file = archive.by_index(i).into_diagnostic()?;
                 if re.is_match(file.name()) {
                     println!("[{:?}] 󰈞 {}", path, file.name());
                 }
@@ -157,7 +179,7 @@ fn process_zip(path: &Path, cmd: &Commands) -> Result<(), Box<dyn std::error::Er
         }
         Commands::Grep { pattern } => {
             for i in 0..archive.len() {
-                let mut file = archive.by_index(i)?;
+                let mut file = archive.by_index(i).into_diagnostic()?;
                 if file.is_file() {
                     let mut buffer = Vec::new();
                     if file.read_to_end(&mut buffer).is_ok() {
@@ -166,13 +188,16 @@ fn process_zip(path: &Path, cmd: &Commands) -> Result<(), Box<dyn std::error::Er
                             .arg(pattern)
                             .stdin(Stdio::piped())
                             .stdout(Stdio::piped())
-                            .spawn()?;
+                            .spawn()
+                            .map_err(ZipCrawlError::RipgrepError)?;
 
                         if let Some(mut stdin) = child.stdin.take() {
                             let _ = stdin.write_all(&buffer);
                         }
 
-                        let output = child.wait_with_output()?;
+                        let output = child
+                            .wait_with_output()
+                            .map_err(ZipCrawlError::RipgrepError)?;
                         if !output.stdout.is_empty() {
                             println!("󰈚 Archive: {:?} | File: {}", path, file.name());
                             println!("{}", String::from_utf8_lossy(&output.stdout));
