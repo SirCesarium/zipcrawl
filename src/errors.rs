@@ -1,3 +1,4 @@
+#![allow(unused_variables, dead_code, unused_assignments, unused)]
 use miette::Diagnostic;
 use thiserror::Error;
 

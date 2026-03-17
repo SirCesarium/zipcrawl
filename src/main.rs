@@ -5,7 +5,7 @@ use miette::IntoDiagnostic;
 use regex::Regex;
 use std::collections::BTreeMap;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Read;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use zip::ZipArchive;
@@ -177,31 +177,34 @@ fn process_zip(path: &Path, cmd: &Commands) -> miette::Result<()> {
                 }
             }
         }
+
         Commands::Grep { pattern } => {
             for i in 0..archive.len() {
                 let mut file = archive.by_index(i).into_diagnostic()?;
+
                 if file.is_file() {
-                    let mut buffer = Vec::new();
-                    if file.read_to_end(&mut buffer).is_ok() {
-                        let mut child = Command::new("rg")
-                            .arg("--color=always")
-                            .arg(pattern)
-                            .stdin(Stdio::piped())
-                            .stdout(Stdio::piped())
-                            .spawn()
-                            .map_err(ZipCrawlError::RipgrepError)?;
+                    let mut child = Command::new("rg")
+                        .arg("--color=always")
+                        .arg(pattern)
+                        .stdin(Stdio::piped())
+                        .stdout(Stdio::piped())
+                        .spawn()
+                        .map_err(ZipCrawlError::RipgrepError)?;
 
-                        if let Some(mut stdin) = child.stdin.take() {
-                            let _ = stdin.write_all(&buffer);
-                        }
+                    if let Some(mut stdin) = child.stdin.take()
+                        && let Err(e) = std::io::copy(&mut file, &mut stdin)
+                    {
+                        eprintln!("{:?}", e);
+                        continue;
+                    }
 
-                        let output = child
-                            .wait_with_output()
-                            .map_err(ZipCrawlError::RipgrepError)?;
-                        if !output.stdout.is_empty() {
-                            println!("󰈚 Archive: {:?} | File: {}", path, file.name());
-                            println!("{}", String::from_utf8_lossy(&output.stdout));
-                        }
+                    let output = child
+                        .wait_with_output()
+                        .map_err(ZipCrawlError::RipgrepError)?;
+
+                    if !output.stdout.is_empty() {
+                        println!("󰈚 Archive: {:?} | File: {}", path, file.name());
+                        println!("{}", String::from_utf8_lossy(&output.stdout));
                     }
                 }
             }
