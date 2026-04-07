@@ -1,70 +1,110 @@
 # 📦 ZipCrawl
 
-**ZipCrawl** is a high-performance ZIP explorer and content inspector for the terminal, written in Rust. It allows you to visualize, search, and peek into compressed archives without the overhead of manual extraction.
+Explore and stream ZIP archives without even extracting them.
+
+---
+
+`zipcrawl` is a fast, developer-focused CLI for inspecting, searching and processing ZIP archives as if they were regular filesystems without ever extracting them.
 
 ## Features
 
-* **Tree Visualization**: Get a recursive view of the archive's structure with customizable depth.
-* **Instant Inspection**: Read file contents directly to `stdout`.
-* **Regex Search**: Find files within archives using powerful regular expressions.
-* **Integrated with Ripgrep**: Search through file contents using `ripgrep` performance directly on the compressed data.
-* **Nerd Font Support**: Clean UI with folder and file icons.
+- **Tree view**
+  - Visualize archive structure with sizes and hierarchy
+  - `zipcrawl <file(s).zip> tree --sizes`
+  - Example: `zipcrawl archives/*.zip tree --sizes`
+
+- **Flat listing**
+  - List all files quickly
+  - `zipcrawl <file(s).zip> list --sizes`
+  - Example: `zipcrawl myArchive.zip list`
+
+- **Search**
+  - Find files by name or pattern
+  - `zipcrawl <file(s).zip> find <query>`
+  - Example: `zipcrawl *.jar find ".bat|.java|.toml"`
+
+- **Content grep**
+  - Search inside files without extraction
+  - `zipcrawl <file(s).zip> grep <pattern>`
+  - Example: `zipcrawl "logs-*.zip" grep "FATAL_ERROR"`
+
+- **Stream file contents**
+  - Pipe file contents into external tools
+  - `zipcrawl <file(s).zip> cat <path> | <command>`
+  - `zipcrawl <file(s).zip> x <path> <command>`
+  - Example: `zipcrawl path/to/folder/*.zip x myScript.sh bash`
+
+- **TUI mode**
+  - Interactive navigation inside archives
+  - Browse and preview archives like a file explorer, but inside a ZIP and without leaving the terminal.
+
+## Why ZipCrawl?
+
+Because extracting archives is _slow_, _messy_ and **unnecessary**
+
+`zipcrawl` lets you:
+
+- Inspect large archives instantly
+- Search code inside `.zip`, `.jar`, `.mrpack`, etc.
+- Keep your disk clean: No more folders cluttering your /tmp or Downloads
+- Search for a specific file or string across dozens of ZIPs with a single command.
+
+## Use cases
+
+- Inspecting any ZIP archive
+- Debugging build artifacts
+- Reverse engineering archives
+- Grepping code inside compressed files
+
+## Security
+
+`zipcrawl` is built with security in mind to handle untrusted archives safely:
+
+- **Zip Bomb Protection:** Automatically detects and rejects archives with suspicious compression ratios or excessive uncompressed sizes.
+- **Path Traversal Defense:** Strict validation of internal paths to prevent files from attempting to access or overwrite locations outside the extraction context (safe `../` handling).
+- **Memory Efficient:** Processes data via streaming/seeking. It never loads the entire ZIP into RAM.
 
 ## Installation
 
-```bash
-# Clone the repository
-git clone https://github.com/SirCesarium/zipcrawl
-cd zipcrawl
+### Direct Download (Recommended)
 
-# Build and install
-cargo install --path .
+Grab the pre-built binary for your operating system from the [Latest Releases](https://github.com/SirCesarium/zipcrawl/releases/latest).
 
-```
+- **Windows:** Download `zipcrawl-windows-amd64.exe`.
+- **macOS:** Download `zipcrawl-macos-arm64` (Apple Silicon) or `intel`.
+- **Linux:** Download `zipcrawl-linux-amd64` (or `musl` for a static binary).
 
-## Usage
+### From Source (Cargo)
 
-### Visualize structure
+By default, this installs the CLI, the TUI, and NerdFont support:
 
 ```bash
-zipcrawl my_archive.zip tree --depth 3
-
+cargo install zipcrawl
 ```
 
-### Search for files
+If you don't use a NerdFont and want plain ASCII icons:
 
 ```bash
-zipcrawl data.zip find ".*\.json$"
-
+cargo install zipcrawl --no-default-features --features cli
 ```
 
-### Grep inside the ZIP
+## 🦀 Use as a Library
 
-```bash
-zipcrawl modpack.mrpack grep "fabric-loader"
+`zipcrawl` isn't just a CLI, it's a modular Rust crate. You can integrate the `ZipManager` engine into your own projects to handle archives with the same safety and speed.
 
+```toml
+[dependencies]
+zipcrawl = { version = "1", default-features = false }
 ```
 
-### Pipe to other tools
+```rust
+use zipcrawl::ZipManager;
+use std::path::Path;
 
-Integrates perfectly with tools like [`type-forge`](https://github.com/SirCesarium/type-forge) for schema generation:
-
-```bash
-zipcrawl bundle.zip cat config.json | type-forge --lang rust
-
+let mut manager = ZipManager::new(Path::new("archive.zip"))?;
+let entries = manager.entries()?;
 ```
 
-## Commands
+## License
 
-| Command | Description | Options |
-| --- | --- | --- |
-| `tree` | Show archive structure | `--depth <N>` (Default: 2) |
-| `cat` | Output file content to stdout | `<FILE_PATH>` |
-| `list` | List files in archive | |
-| `find` | Search files by name (Regex) | `<REGEX>` |
-| `grep` | Search inside file contents | `<PATTERN>` |
-
-## Requirements
-
-* [ripgrep](https://github.com/BurntSushi/ripgrep) (required for the `grep` command).
-* A [Nerd Font](https://www.nerdfonts.com/) for proper icon rendering.
+This project is licensed under [MIT License](./LICENSE).
