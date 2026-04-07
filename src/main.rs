@@ -13,6 +13,7 @@ use crate::archive::ZipManager;
 use clap::{Parser, Subcommand};
 use miette::Result;
 use std::env::args;
+use std::iter;
 use std::path::Path;
 
 #[derive(Parser)]
@@ -27,11 +28,16 @@ enum Commands {
     Tree {
         #[arg(short, long, default_value = "4")]
         depth: usize,
+        #[arg(short, long)]
+        sizes: bool,
     },
     Cat {
         file: String,
     },
-    List,
+    List {
+        #[arg(short, long)]
+        sizes: bool,
+    },
     Find {
         regex: String,
     },
@@ -49,18 +55,19 @@ enum Commands {
 fn main() -> Result<()> {
     miette::set_panic_hook();
 
-    let args: Vec<String> = args().collect();
+    let all_args: Vec<String> = args().collect();
     let subcommands = ["tree", "cat", "list", "find", "grep", "x", "help"];
 
-    let sub_idx = args.iter().position(|a| subcommands.contains(&a.as_str()));
+    let sub_idx = all_args
+        .iter()
+        .position(|a| subcommands.contains(&a.as_str()));
 
     match sub_idx {
-        Some(idx) if idx > 1 => {
-            let zip_paths = &args[1..idx];
-            let sub_args = &args[idx..];
+        Some(idx) if idx >= 1 => {
+            let zip_paths = &all_args[1..idx];
 
-            let mut cmd_args = vec!["zipcrawl".to_string()];
-            cmd_args.extend(sub_args.iter().cloned());
+            let cmd_args = iter::once(all_args[0].clone()).chain(all_args[idx..].iter().cloned());
+
             let cli = Cli::parse_from(cmd_args);
 
             for path_str in zip_paths {
@@ -73,9 +80,9 @@ fn main() -> Result<()> {
                 let mut manager = ZipManager::new(path)?;
 
                 let res = match &cli.command {
-                    Commands::Tree { depth } => manager.tree(*depth),
+                    Commands::Tree { depth, sizes } => manager.tree(*depth, *sizes),
                     Commands::Cat { file } => manager.cat(file),
-                    Commands::List => manager.list(),
+                    Commands::List { sizes } => manager.list(*sizes),
                     Commands::Find { regex } => manager.find(regex),
                     Commands::Grep { pattern } => manager.grep(pattern),
                     Commands::X {
