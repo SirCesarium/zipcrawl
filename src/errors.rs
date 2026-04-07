@@ -36,4 +36,18 @@ pub enum ZipCrawlError {
     #[error("File '{filename}' not found in archive")]
     #[diagnostic(code(zipcrawl::file_not_found))]
     FileNotFound { filename: String },
+
+    #[error("Invalid path detected (Traversal attempt): {path}")]
+    #[diagnostic(
+        code(zipcrawl::invalid_path),
+        help("Paths cannot contain '..' components.")
+    )]
+    InvalidPath { path: String },
+
+    #[error("Potential Zip Bomb detected in '{filename}'")]
+    #[diagnostic(
+        code(zipcrawl::zip_bomb),
+        help("The file exceeds size limits or has an abnormal compression ratio.")
+    )]
+    ZipBombDetected { filename: String },
 }
