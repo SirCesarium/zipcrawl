@@ -1,13 +1,22 @@
 [package]
 name = "zipcrawl"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2024"
 authors = ["SirCesarium"]
-description = "A high-performance ZIP explorer and content inspector for the terminal."
+description = "Explore and stream ZIP archives without even extracting them."
 license = "MIT"
 repository = "https://github.com/SirCesarium/zipcrawl"
 readme = "README.md"
-keywords = ["zip", "cli", "explorer", "grep", "tree"]
+keywords = [
+    "zip",
+    "cli",
+    "explorer",
+    "grep",
+    "tree",
+    "preview",
+    "streaming",
+    "tui",
+]
 categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]

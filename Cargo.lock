@@ -2418,7 +2418,7 @@ dependencies = [
 
 [[package]]
 name = "zipcrawl"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "bytesize",
  "clap",
