@@ -8,3 +8,6 @@
 pub mod archive;
 pub mod display;
 pub mod errors;
+
+pub use crate::archive::{ZipEntry, ZipManager};
+pub use crate::errors::ZipCrawlError;
