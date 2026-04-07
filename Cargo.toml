@@ -7,16 +7,7 @@ description = "Explore and stream ZIP archives without even extracting them."
 license = "MIT"
 repository = "https://github.com/SirCesarium/zipcrawl"
 readme = "README.md"
-keywords = [
-    "zip",
-    "cli",
-    "explorer",
-    "grep",
-    "tree",
-    "preview",
-    "streaming",
-    "tui",
-]
+keywords = ["zip", "cli", "explorer", "grep", "tree"]
 categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
