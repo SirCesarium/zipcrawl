@@ -84,9 +84,7 @@ pub fn draw(f: &mut Frame, app: &App) {
     }
 
     let help_menu = match app.input_mode {
-        InputMode::Normal => {
-            " [/] Search | [o] Preview | [h/j/k/l] Nav | [ENTER] Open | [Ctrl-c] Quit "
-        }
+        InputMode::Normal => " [/] Search | [o/Enter] Preview | [h/j/k/l] Nav | [Ctrl-c] Quit ",
         InputMode::Search => " [ESC] Normal Mode | [ENTER] Finish | [BACKSPACE] Delete ",
     };
 
