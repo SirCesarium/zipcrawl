@@ -9,6 +9,7 @@ mod archive;
 mod commands;
 mod display;
 mod errors;
+mod tui;
 
 use crate::archive::ZipManager;
 use crate::commands::{Cli, Commands};
@@ -21,7 +22,7 @@ use std::path::Path;
 fn main() -> Result<()> {
     miette::set_panic_hook();
     let all_args: Vec<String> = args().collect();
-    let subcommands = ["tree", "cat", "list", "find", "grep", "x", "help"];
+    let subcommands = ["tree", "cat", "list", "find", "grep", "x", "help", "tui"];
 
     let sub_idx = all_args
         .iter()
@@ -54,6 +55,7 @@ fn main() -> Result<()> {
                         command,
                         args,
                     } => commands::execute::handle(&mut manager, file, command, args),
+                    Commands::Tui => commands::tui::handle(&mut manager),
                 };
 
                 if let Err(e) = res {
