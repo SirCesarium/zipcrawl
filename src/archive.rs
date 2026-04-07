@@ -34,31 +34,37 @@ impl ZipManager {
             })
     }
 
-    pub fn tree(&mut self, max_depth: usize) -> Result<(), ZipCrawlError> {
+    pub fn tree(&mut self, max_depth: usize, show_sizes: bool) -> Result<(), ZipCrawlError> {
         let mut root = Node::new("root", true);
+
         for i in 0..self.archive.len() {
             let file = self.archive.by_index(i)?;
+            let file_size = file.size();
             let parts: Vec<&str> = file.name().split('/').filter(|s| !s.is_empty()).collect();
 
             let mut current = &mut root;
+            current.size += file_size;
+
             for (idx, part) in parts.iter().enumerate() {
                 if idx + 1 > max_depth {
                     break;
                 }
-                let is_dir = if idx == parts.len() - 1 {
-                    file.is_dir()
-                } else {
-                    true
-                };
+
+                let is_dir = idx < parts.len() - 1 || file.is_dir();
+
                 current = current
                     .children
                     .entry((*part).to_string())
                     .or_insert_with(|| Node::new(part, is_dir));
+
+                current.size += file_size;
             }
         }
+
+        let total_size = root.size;
         let count = root.children.len();
         for (i, (_, node)) in root.children.iter().enumerate() {
-            TreeWriter::write(node, "", i == count - 1);
+            TreeWriter::write(node, "", i == count - 1, total_size, show_sizes);
         }
         Ok(())
     }
@@ -72,11 +78,30 @@ impl ZipManager {
         Ok(())
     }
 
-    pub fn list(&mut self) -> Result<(), ZipCrawlError> {
+    pub fn list(&mut self, show_sizes: bool) -> Result<(), ZipCrawlError> {
+        let mut total_size: u64 = 0;
+        for i in 0..self.archive.len() {
+            if let Ok(file) = self.archive.by_index(i) {
+                total_size += file.size();
+            }
+        }
+
         for i in 0..self.archive.len() {
             let file = self.archive.by_index(i)?;
+
             if file.is_file() {
-                println!("{}", file.name());
+                let icon = TreeWriter::get_icon(false);
+                let file_name = file.name();
+
+                if show_sizes {
+                    let file_size = file.size();
+                    let size_str = TreeWriter::format_size(file_size);
+                    let bar = TreeWriter::get_bar(file_size, total_size);
+
+                    println!("{icon} {file_name:<40} {size_str:>10} {bar}");
+                } else {
+                    println!("{icon} {file_name}");
+                }
             }
         }
         Ok(())
