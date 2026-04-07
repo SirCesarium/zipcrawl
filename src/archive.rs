@@ -6,6 +6,7 @@ use std::path::Path;
 use zip::ZipArchive;
 use zip::read::ZipFile;
 
+#[derive(Clone)]
 pub struct ZipEntry {
     pub name: String,
     pub is_dir: bool,

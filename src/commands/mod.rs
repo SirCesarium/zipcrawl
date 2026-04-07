@@ -6,6 +6,7 @@ pub mod find;
 pub mod grep;
 pub mod list;
 pub mod tree;
+pub mod tui;
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -41,4 +42,5 @@ pub enum Commands {
         #[arg(trailing_var_arg = true)]
         args: Vec<String>,
     },
+    Tui,
 }
