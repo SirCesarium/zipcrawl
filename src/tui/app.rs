@@ -2,6 +2,7 @@ use crate::archive::{ZipEntry, ZipManager};
 use fuzzy_matcher::FuzzyMatcher;
 use fuzzy_matcher::skim::SkimMatcherV2;
 use std::cmp::Reverse;
+use std::io::Read;
 
 pub enum InputMode {
     Normal,
@@ -114,11 +115,23 @@ impl<'a> App<'a> {
     pub fn load_preview(&mut self) {
         if let Some(entry) = self.current_entries.get(self.selected_index)
             && !entry.is_dir
-            && let Ok(content) = self.manager.read_file_content(&entry.name)
         {
-            self.preview_content = Some(String::from_utf8_lossy(&content).into_owned());
-            self.preview_scroll = 0;
-            return;
+            let limit = 32_768;
+            let preview_size = entry.size.min(limit);
+
+            if let Ok(mut reader) = self.manager.open_file(&entry.name) {
+                let mut buffer = String::with_capacity(preview_size.try_into().unwrap_or(0));
+                if reader
+                    .by_ref()
+                    .take(limit)
+                    .read_to_string(&mut buffer)
+                    .is_ok()
+                {
+                    self.preview_content = Some(buffer);
+                    self.preview_scroll = 0;
+                    return;
+                }
+            }
         }
         self.preview_content = None;
     }

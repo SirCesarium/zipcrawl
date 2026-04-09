@@ -35,32 +35,33 @@ pub fn handle(
             TreeWriter::print_file_header(&file_name);
         }
 
-        let mut entry = manager.open_file(&file_name)?;
+        manager.stream_file(&file_name, |reader| {
+            let mut child = Command::new(command)
+                .args(args)
+                .stdin(Stdio::piped())
+                .spawn()
+                .map_err(|e| ZipCrawlError::ExecutionError {
+                    cmd: command.to_string(),
+                    source: e,
+                })?;
 
-        let mut child = Command::new(command)
-            .args(args)
-            .stdin(Stdio::piped())
-            .spawn()
-            .map_err(|e| ZipCrawlError::ExecutionError {
+            if let Some(mut stdin) = child.stdin.take() {
+                io::copy(reader, &mut stdin).map_err(|e| ZipCrawlError::ExecutionError {
+                    cmd: command.to_string(),
+                    source: e,
+                })?;
+            }
+
+            let status = child.wait().map_err(|e| ZipCrawlError::ExecutionError {
                 cmd: command.to_string(),
                 source: e,
             })?;
 
-        if let Some(mut stdin) = child.stdin.take() {
-            io::copy(&mut entry, &mut stdin).map_err(|e| ZipCrawlError::ExecutionError {
-                cmd: command.to_string(),
-                source: e,
-            })?;
-        }
-
-        let status = child.wait().map_err(|e| ZipCrawlError::ExecutionError {
-            cmd: command.to_string(),
-            source: e,
+            if !status.success() {
+                eprintln!("Warning: Command failed for {file_name}");
+            }
+            Ok(())
         })?;
-
-        if !status.success() {
-            eprintln!("Warning: Command failed for {file_name}");
-        }
 
         if !quiet {
             println!();

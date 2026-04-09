@@ -31,10 +31,12 @@ pub fn handle(
             TreeWriter::print_file_header(&file_name);
         }
 
-        let mut entry = manager.open_file(&file_name)?;
-        io::copy(&mut entry, &mut io::stdout()).map_err(|e| ZipCrawlError::IoError {
-            path: file_name,
-            source: e,
+        manager.stream_file(&file_name, |reader| {
+            io::copy(reader, &mut io::stdout()).map_err(|e| ZipCrawlError::IoError {
+                path: file_name.clone(),
+                source: e,
+            })?;
+            Ok(())
         })?;
 
         if !quiet {
