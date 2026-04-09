@@ -13,6 +13,7 @@ mod tui;
 
 use crate::archive::ZipManager;
 use crate::commands::{Cli, Commands};
+use clap::CommandFactory;
 use clap::Parser;
 use miette::Result;
 use std::env::args;
@@ -67,7 +68,7 @@ fn main() -> Result<()> {
             }
         }
         _ => {
-            let _ = Cli::parse_from(vec!["zipcrawl", "--help"]);
+            Cli::command().print_help().ok();
         }
     }
     Ok(())
