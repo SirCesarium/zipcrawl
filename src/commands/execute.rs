@@ -20,8 +20,15 @@ pub fn handle(
         })?;
 
     if let Some(mut stdin) = child.stdin.take() {
-        let _ = io::copy(&mut entry, &mut stdin);
+        io::copy(&mut entry, &mut stdin).map_err(|e| ZipCrawlError::ExecutionError {
+            cmd: command.to_string(),
+            source: e,
+        })?;
     }
-    let _ = child.wait();
+
+    child.wait().map_err(|e| ZipCrawlError::ExecutionError {
+        cmd: command.to_string(),
+        source: e,
+    })?;
     Ok(())
 }
