@@ -1,4 +1,5 @@
 use colored::Colorize;
+use similar::ChangeTag;
 use std::collections::BTreeMap;
 
 pub struct TreeWriter;
@@ -159,5 +160,57 @@ impl TreeWriter {
         let percentage_display = format!("{:>3.0}%", percentage * 100.0).yellow();
 
         format!("[{bar}] {percentage_display}")
+    }
+
+    pub fn print_file_header(filename: &str) {
+        let icon = Self::get_icon_for_name(filename, false);
+        let separator = "─".repeat(filename.len() + 4).bright_black();
+
+        println!("{separator}");
+        println!("{} {}", icon, filename.bold().cyan());
+        println!("{separator}");
+    }
+}
+
+pub struct DiffWriter;
+
+impl DiffWriter {
+    pub fn format_addition(path: &str, is_dir: bool) -> String {
+        let icon = TreeWriter::get_icon_for_name(path, is_dir);
+        format!("{} {} {path}", "+".green().bold(), icon)
+    }
+
+    pub fn format_removal(path: &str, is_dir: bool) -> String {
+        let icon = TreeWriter::get_icon_for_name(path, is_dir);
+        format!("{} {} {path}", "-".red().bold(), icon)
+    }
+
+    pub fn format_change(path: &str, is_dir: bool, diffs: &[String]) -> String {
+        let icon = TreeWriter::get_icon_for_name(path, is_dir);
+        let tags = diffs.join(", ");
+        format!(
+            "{} {} {path} {}",
+            "Δ".blue().bold(),
+            icon,
+            format!("({tags})").italic().dimmed()
+        )
+    }
+
+    pub fn format_line_diff(change_tag: ChangeTag, content: &str) -> String {
+        match change_tag {
+            ChangeTag::Delete => format!("{}{}", "-".red(), content.red()),
+            ChangeTag::Insert => format!("{}{}", "+".green(), content.green()),
+            ChangeTag::Equal => format!(" {content}"),
+        }
+    }
+
+    /// Cabecera para el bloque de cambios de línea
+    pub fn line_diff_header() -> String {
+        "--- Line Changes ---".dimmed().to_string()
+    }
+
+    /// Separador para el bloque de cambios de línea
+    pub fn line_diff_footer() -> String {
+        "--------------------".dimmed().to_string()
     }
 }
