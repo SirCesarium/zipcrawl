@@ -65,11 +65,11 @@ impl ZipManager {
         Ok(entries)
     }
 
-    /// Opens a file for reading.
+    /// Opens a file entry for reading, returning a handle that implements [`Read`].
     ///
     /// # Security
     /// - Performs path traversal checks (rejects `..` components).
-    /// - Checks for Zip Bomb characteristics (size and compression ratio).
+    /// - Validates against Zip Bomb characteristics (abnormal compression ratios or excessive size).
     pub fn open_file(&mut self, name: &str) -> Result<ZipFile<'_, File>, ZipCrawlError> {
         let file = self
             .archive
@@ -78,6 +78,7 @@ impl ZipManager {
                 filename: name.to_string(),
             })?;
 
+        // Security Check: Path Traversal
         if let Some(enclosed) = file.enclosed_name() {
             if enclosed.components().any(|c| matches!(c, ParentDir)) {
                 return Err(ZipCrawlError::InvalidPath {
@@ -93,6 +94,7 @@ impl ZipManager {
         let compressed = file.compressed_size();
         let uncompressed = file.size();
 
+        // Security Check: Zip Bomb detection
         if uncompressed > Self::MAX_SIZE {
             return Err(ZipCrawlError::ZipBombDetected {
                 filename: name.to_string(),
@@ -108,9 +110,35 @@ impl ZipManager {
         Ok(file)
     }
 
+    /// Provides streaming access to a file's content via a closure.
+    ///
+    /// This is the preferred way to process large files as it avoids loading
+    /// the entire content into memory (Heap).
+    ///
+    /// # Example
+    /// ```
+    /// manager.stream_file("data.txt", |reader| {
+    ///     io::copy(reader, &mut io::stdout())?;
+    ///     Ok(())
+    /// })?;
+    /// ```
+    pub fn stream_file<F, T>(&mut self, name: &str, mut f: F) -> Result<T, ZipCrawlError>
+    where
+        F: FnMut(&mut ZipFile<'_, File>) -> Result<T, ZipCrawlError>,
+    {
+        let mut file = self.open_file(name)?;
+        f(&mut file)
+    }
+
     /// Reads the full content of a file into a byte buffer.
     ///
     /// This method is subject to `MAX_SIZE` limits for safety.
+    ///
+    /// # Deprecated
+    /// Use [`ZipManager::stream_file`] or [`ZipManager::open_file`] to process data
+    /// without high memory allocation (Zero-copy/Streaming approach).
+    #[deprecated(since = "1.1.1", note = "High memory usage. Use stream_file instead.")]
+    #[allow(unused)]
     pub fn read_file_content(&mut self, name: &str) -> Result<Vec<u8>, ZipCrawlError> {
         let file = self.open_file(name)?;
 

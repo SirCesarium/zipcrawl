@@ -40,38 +40,40 @@ pub fn handle(
             continue;
         }
 
-        let mut file = manager.open_file(&entry.name)?;
-        let reader = BufReader::new(&mut file);
-        let mut matched = false;
+        manager.stream_file(&entry.name, |file| {
+            let reader = BufReader::new(file);
+            let mut matched = false;
 
-        for (idx, line_result) in reader.lines().enumerate() {
-            let Ok(line) = line_result else { break };
+            for (idx, line_result) in reader.lines().enumerate() {
+                let Ok(line) = line_result else { break };
 
-            if re.is_match(&line) {
-                if !matched {
-                    let icon = TreeWriter::get_icon_for_name(&entry.name, false);
-                    println!(
-                        "{} {} {} {}",
-                        icon,
-                        archive_path,
-                        "➜".bright_black(),
-                        entry.name.cyan().bold()
-                    );
-                    matched = true;
+                if re.is_match(&line) {
+                    if !matched {
+                        let icon = TreeWriter::get_icon_for_name(&entry.name, false);
+                        println!(
+                            "{} {} {} {}",
+                            icon,
+                            archive_path,
+                            "➜".bright_black(),
+                            entry.name.cyan().bold()
+                        );
+                        matched = true;
+                    }
+
+                    let line_num = (idx + 1).to_string().dimmed();
+                    let highlighted = re.replace_all(&line, |caps: &regex::Captures| {
+                        caps[0].red().bold().to_string()
+                    });
+
+                    println!("  {} {}", line_num, highlighted.trim());
                 }
-
-                let line_num = (idx + 1).to_string().dimmed();
-                let highlighted = re.replace_all(&line, |caps: &regex::Captures| {
-                    caps[0].red().bold().to_string()
-                });
-
-                println!("  {} {}", line_num, highlighted.trim());
             }
-        }
 
-        if matched {
-            println!();
-        }
+            if matched {
+                println!();
+            }
+            Ok(())
+        })?;
     }
     Ok(())
 }

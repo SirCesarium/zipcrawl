@@ -6,7 +6,7 @@ use minus::Pager;
 use similar::TextDiff;
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Write as _;
-use std::io;
+use std::io::{self, Read};
 use std::path::Path;
 
 #[allow(
@@ -104,28 +104,41 @@ pub fn handle(
                         .and_then(|s| s.to_str())
                         .unwrap_or("");
 
-                    let text_extensions = [
-                        "toml",
-                        "json",
-                        "txt",
-                        "js",
-                        "properties",
-                        "fmdata",
-                        "db",
-                        "local",
-                        "mcmeta",
-                    ];
+                    let text_extensions = ["toml", "json", "txt", "rs", "js", "properties", "md"];
 
-                    if text_extensions.contains(&extension) && c.size < 200_000 && b.size < 200_000
+                    if text_extensions.contains(&extension) && c.size < 500_000 && b.size < 500_000
                     {
-                        let data_current = manager.read_file_content(&c.name)?;
-                        let data_base = base_manager.read_file_content(&b.name)?;
+                        let current_size: usize =
+                            c.size.try_into().map_err(|_| ZipCrawlError::IoError {
+                                path: c.name.clone(),
+                                source: io::Error::new(
+                                    io::ErrorKind::InvalidData,
+                                    "Current file too large for CPU arch",
+                                ),
+                            })?;
 
-                        let text_current = String::from_utf8_lossy(&data_current);
-                        let text_base = String::from_utf8_lossy(&data_base);
+                        let base_size: usize =
+                            b.size.try_into().map_err(|_| ZipCrawlError::IoError {
+                                path: b.name.clone(),
+                                source: io::Error::new(
+                                    io::ErrorKind::InvalidData,
+                                    "Base file too large for CPU arch",
+                                ),
+                            })?;
+
+                        let mut text_current = String::with_capacity(current_size);
+                        let mut text_base = String::with_capacity(base_size);
+
+                        manager
+                            .open_file(&c.name)?
+                            .read_to_string(&mut text_current)
+                            .ok();
+                        base_manager
+                            .open_file(&b.name)?
+                            .read_to_string(&mut text_base)
+                            .ok();
 
                         let diff = TextDiff::from_lines(&text_base, &text_current);
-
                         writeln!(output, "{}", DiffWriter::line_diff_header()).ok();
                         for change in diff.iter_all_changes() {
                             write!(
@@ -151,22 +164,10 @@ pub fn handle(
     }
 
     let pager = Pager::new();
-    pager.set_text(output).map_err(|e| ZipCrawlError::IoError {
-        path: "pager_text".to_string(),
-        source: io::Error::other(e),
-    })?;
-
-    pager
-        .set_prompt("zipcrawl diff")
-        .map_err(|e| ZipCrawlError::IoError {
-            path: "pager_prompt".to_string(),
-            source: io::Error::other(e),
-        })?;
-
+    pager.set_text(output).ok();
+    pager.set_prompt("zipcrawl diff").ok();
     minus::page_all(pager).map_err(|e| ZipCrawlError::IoError {
-        path: "pager_output".to_string(),
+        path: "pager".into(),
         source: io::Error::other(e),
-    })?;
-
-    Ok(())
+    })
 }
