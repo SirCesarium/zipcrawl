@@ -1,6 +1,6 @@
 [package]
 name = "zipcrawl"
-version = "1.1.0"
+version = "1.1.1"
 edition = "2024"
 authors = ["SirCesarium"]
 description = "Explore and stream ZIP archives without even extracting them."
