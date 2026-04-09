@@ -23,7 +23,9 @@ use std::path::Path;
 fn main() -> Result<()> {
     miette::set_panic_hook();
     let all_args: Vec<String> = args().collect();
-    let subcommands = ["tree", "cat", "list", "find", "grep", "x", "help", "tui"];
+    let subcommands = [
+        "tree", "cat", "list", "find", "grep", "x", "help", "tui", "diff",
+    ];
 
     let sub_idx = all_args
         .iter()
@@ -47,16 +49,56 @@ fn main() -> Result<()> {
                     Commands::Tree { depth, sizes } => {
                         commands::tree::handle(&mut manager, *depth, *sizes)
                     }
-                    Commands::Cat { file } => commands::cat::handle(&mut manager, file),
+                    Commands::Cat { file, quiet } => {
+                        commands::cat::handle(&mut manager, file, *quiet)
+                    }
                     Commands::List { sizes } => commands::list::handle(&mut manager, *sizes),
-                    Commands::Find { regex } => commands::find::handle(&mut manager, regex),
-                    Commands::Grep { pattern } => commands::grep::handle(&mut manager, pattern),
+                    Commands::Find {
+                        regex,
+                        path,
+                        glob,
+                        entry_type,
+                    } => commands::find::handle(
+                        &mut manager,
+                        regex,
+                        path.as_deref(),
+                        *glob,
+                        entry_type.as_deref(),
+                    ),
+                    Commands::Grep {
+                        pattern,
+                        glob,
+                        path,
+                    } => commands::grep::handle(
+                        &mut manager,
+                        pattern,
+                        glob.as_deref(),
+                        path.as_deref(),
+                    ),
                     Commands::X {
                         file,
                         command,
                         args,
-                    } => commands::execute::handle(&mut manager, file, command, args),
+                        quiet,
+                    } => commands::execute::handle(&mut manager, file, command, args, *quiet),
                     Commands::Tui => commands::tui::handle(&mut manager),
+                    Commands::Diff {
+                        base,
+                        exclude,
+                        include,
+                        mode,
+                        quiet,
+                    } => commands::diff::handle(
+                        &mut manager,
+                        base,
+                        matches!(mode, commands::DiffMode::Structure),
+                        matches!(mode, commands::DiffMode::Stats),
+                        matches!(mode, commands::DiffMode::Full),
+                        matches!(mode, commands::DiffMode::Full),
+                        include.as_deref(),
+                        exclude.as_deref(),
+                        *quiet,
+                    ),
                 };
 
                 if let Err(e) = res {
