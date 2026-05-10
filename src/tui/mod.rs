@@ -39,13 +39,11 @@ pub fn handle(manager: &mut ZipManager) -> Result<(), ZipCrawlError> {
                 match app.input_mode {
                     InputMode::Normal => match key.code {
                         KeyCode::Char('/') => app.input_mode = InputMode::Search,
-                        KeyCode::Char('j') | KeyCode::Down => {
-                            if !app.current_entries.is_empty() {
-                                app.selected_index = (app.selected_index + 1)
-                                    .min(app.current_entries.len().saturating_sub(1));
-                                if app.show_preview {
-                                    app.load_preview();
-                                }
+                        KeyCode::Char('j') | KeyCode::Down if !app.current_entries.is_empty() => {
+                            app.selected_index = (app.selected_index + 1)
+                                .min(app.current_entries.len().saturating_sub(1));
+                            if app.show_preview {
+                                app.load_preview();
                             }
                         }
                         KeyCode::Char('k') | KeyCode::Up => {
