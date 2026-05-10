@@ -116,11 +116,18 @@ impl ZipManager {
     /// the entire content into memory (Heap).
     ///
     /// # Example
-    /// ```
+    /// ```no_run
+    /// use std::io;
+    /// # use zipcrawl::archive::ZipManager;
+    /// # use std::path::Path;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # let mut manager = ZipManager::new(Path::new("example.zip"))?;
     /// manager.stream_file("data.txt", |reader| {
-    ///     io::copy(reader, &mut io::stdout())?;
+    ///     io::copy(reader, &mut io::stdout()).expect("Failed to copy content to stdout");
     ///     Ok(())
     /// })?;
+    /// # Ok(())
+    /// # }
     /// ```
     pub fn stream_file<F, T>(&mut self, name: &str, mut f: F) -> Result<T, ZipCrawlError>
     where
