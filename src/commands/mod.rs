@@ -27,6 +27,7 @@ pub enum DiffMode {
 #[derive(Subcommand, Clone)]
 pub enum Commands {
     /// Display directory structure in a tree format
+    #[command(alias = "t")]
     Tree {
         #[arg(short, long, default_value = "4")]
         depth: usize,
@@ -40,11 +41,13 @@ pub enum Commands {
         quiet: bool,
     },
     /// List files and directories
+    #[command(aliases = &["ls", "l"])]
     List {
         #[arg(short, long)]
         sizes: bool,
     },
     /// Find files matching a pattern
+    #[command(aliases = &["fd", "f"])]
     Find {
         /// Regex pattern to search (or literal string)
         regex: String,
@@ -62,6 +65,7 @@ pub enum Commands {
         entry_type: Option<String>,
     },
     /// Search for a pattern in files
+    #[command(alias = "g")]
     Grep {
         pattern: String,
 
@@ -84,6 +88,7 @@ pub enum Commands {
         quiet: bool,
     },
     /// Compare archives against a base ZIP file
+    #[command(alias = "d")]
     Diff {
         /// Base archive for comparison
         #[arg(short, long)]
