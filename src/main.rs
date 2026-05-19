@@ -23,7 +23,7 @@ fn main() -> Result<()> {
     miette::set_panic_hook();
     let all_args: Vec<String> = args().collect();
     let subcommands = [
-        "tree", "cat", "list", "find", "grep", "x", "help", "diff",
+        "tree", "t", "cat", "list", "ls", "l", "find", "fd", "f", "grep", "g", "x", "help", "diff", "d",
     ];
 
     let sub_idx = all_args
