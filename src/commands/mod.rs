@@ -7,7 +7,6 @@ pub mod find;
 pub mod grep;
 pub mod list;
 pub mod tree;
-pub mod tui;
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -84,8 +83,6 @@ pub enum Commands {
         #[arg(short, long)]
         quiet: bool,
     },
-    /// Interactive TUI file explorer
-    Tui,
     /// Compare archives against a base ZIP file
     Diff {
         /// Base archive for comparison
