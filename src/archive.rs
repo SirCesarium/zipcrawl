@@ -4,8 +4,8 @@ use std::fs::File;
 use std::io::{Error, ErrorKind, Read};
 use std::path::Component::ParentDir;
 use std::path::Path;
-use zip::ZipArchive;
 use zip::read::ZipFile;
+use zip::ZipArchive;
 
 /// Represents a single entry within a ZIP archive.
 #[derive(Clone)]

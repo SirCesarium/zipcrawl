@@ -25,3 +25,4 @@ minus = { version = "5.7.0", features = ["static_output"] }
 default = ["nerdfonts", "cli"]
 nerdfonts = []
 cli = ["dep:clap"]
+compress = []

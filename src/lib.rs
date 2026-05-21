@@ -13,7 +13,11 @@
 #![allow(clippy::missing_errors_doc)]
 
 pub mod archive;
+#[cfg(feature = "compress")]
+pub mod compress;
 pub mod errors;
 
 pub use crate::archive::{ZipEntry, ZipManager};
+#[cfg(feature = "compress")]
+pub use crate::compress::{CompressOptions, ZipCompressor};
 pub use crate::errors::ZipCrawlError;
