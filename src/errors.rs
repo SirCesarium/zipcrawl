@@ -65,4 +65,14 @@ pub enum ZipCrawlError {
     #[error("Invalid glob pattern: {glob}")]
     #[diagnostic(code(zipcrawl::invalid_glob))]
     InvalidGlob { glob: String },
+
+    /// File size exceeds the configured limit during compression.
+    #[cfg(feature = "compress")]
+    #[allow(dead_code)]
+    #[error("File exceeds size limit: {actual} bytes, but the limit is {limit} bytes")]
+    #[diagnostic(
+        code(zipcrawl::size_limit),
+        help("Increase the max_file_size in CompressOptions or split the file.")
+    )]
+    SizeLimitExceeded { limit: u64, actual: u64 },
 }
