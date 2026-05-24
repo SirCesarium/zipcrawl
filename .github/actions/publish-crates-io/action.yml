@@ -1,0 +1,8 @@
+name: "Publish to crates.io"
+description: "Publishes the crate to crates.io"
+runs:
+  using: "composite"
+  steps:
+    - uses: dtolnay/rust-toolchain@stable
+    - run: cargo publish --token "$CARGO_REGISTRY_TOKEN"
+      shell: bash

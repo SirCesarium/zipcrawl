@@ -1,0 +1,47 @@
+version = 1
+platform = "github"
+lang = "rust"
+
+[[artifacts]]
+type = "bin"
+name = "zipcrawl"
+outputName = "zipcrawl-{os}-{arch}-{abi}"
+
+[[targets]]
+id = "linux-musl"
+for = "zipcrawl"
+os = "linux"
+arch = ["x86_64", "arm64"]
+abi = "musl"
+packages = ["bin"]
+
+[[targets]]
+id = "windows"
+for = "zipcrawl"
+os = "windows"
+arch = ["x86_64"]
+packages = ["bin"]
+
+[[targets]]
+id = "macos"
+for = "zipcrawl"
+os = "macos"
+arch = ["x86_64", "arm64"]
+packages = ["bin"]
+
+[[publish]]
+type = "builtin"
+builtin = "download_artifact"
+targets = "all"
+
+[[publish]]
+type = "builtin"
+builtin = "github_release"
+targets = "all"
+
+[[publish]]
+type = "composite"
+name = "Publish to crates.io"
+action = "publish-crates-io"
+secrets = ["CARGO_REGISTRY_TOKEN"]
+targets = "once"
