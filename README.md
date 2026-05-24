@@ -34,10 +34,6 @@ Explore and stream ZIP archives without even extracting them.
   - `zipcrawl <file(s).zip> x <path> <command>`
   - Example: `zipcrawl path/to/folder/*.zip x myScript.sh bash`
 
-- **TUI mode**
-  - Interactive navigation inside archives
-  - Browse and preview archives like a file explorer, but inside a ZIP and without leaving the terminal.
-
 ## Why ZipCrawl?
 
 Because extracting archives is _slow_, _messy_ and **unnecessary**
@@ -76,7 +72,7 @@ Grab the pre-built binary for your operating system from the [Latest Releases](h
 
 ### From Source (Cargo)
 
-By default, this installs the CLI, the TUI, and NerdFont support:
+By default, this installs the CLI and NerdFont support:
 
 ```bash
 cargo install zipcrawl
@@ -99,7 +95,6 @@ cargo install zipcrawl --no-default-features --features cli
 | `grep`  | Pattern match in files       | `-g`, `--glob` <br> `-p`, `--path`                                                                    | Filter by file extension or subdirectory <br> before searching content.                            |
 | `diff`  | Compare archives             | `-b`, `--base` <br> `-m`, `--mode` <br> `-i`, `--include` <br> `-e`, `--exclude` <br> `-q`, `--quiet` | **Modes**: `default`, `structure`, `stats`, `full`. <br> Supports comma-separated include/exclude. |
 | `x`     | Execute command              | `-q`, `--quiet`                                                                                       | Passes file content to `stdin` of the command.                                                     |
-| `tui`   | Terminal UI                  | _None_                                                                                                | Interactive navigation and previews.                                                               |
 
 ## Quick Examples
 
