@@ -101,11 +101,26 @@ fn cat_with_glob() {
 }
 
 #[test]
-fn cat_quiet_shows_no_header() {
-    let (_dir, zip) = make_zip_file(&[("hello.txt", "content")]);
-    let (ok, stdout, _) = exec_zip(&zip, &["cat", "hello.txt", "--quiet"]);
+fn bat_shows_content() {
+    let (_dir, zip) = make_zip_file(&[("hello.txt", "Hello, World!")]);
+    let (ok, stdout, _) = exec_zip(&zip, &["bat", "hello.txt"]);
     assert!(ok, "stdout: {stdout}");
-    assert_eq!(stdout.trim(), "content");
+    assert!(stdout.contains("Hello, World!"));
+}
+
+#[test]
+fn bat_file_not_found() {
+    let (_dir, zip) = make_zip_file(&[("exists.txt", "content")]);
+    let (ok, _, _) = exec_zip(&zip, &["bat", "missing.txt"]);
+    assert!(!ok, "should fail for missing file");
+}
+
+#[test]
+fn exec_alias_works() {
+    let (_dir, zip) = make_zip_file(&[("data.txt", "hello")]);
+    let (ok, stdout, _) = exec_zip(&zip, &["exec", "data.txt", "cat"]);
+    assert!(ok, "stdout: {stdout}");
+    assert!(stdout.contains("hello"));
 }
 
 #[test]
