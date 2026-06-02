@@ -86,6 +86,9 @@ zipcrawl data.zip cat config.json | jq .server.port
 zipcrawl releases/*.zip cat data.yaml | tyg --lang typescript
 ```
 
+> [!NOTE]
+> This project is in **maintenance mode**. No new features are planned; only bug fixes and dependency updates.
+
 ## License
 
 MIT
