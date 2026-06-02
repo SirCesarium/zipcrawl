@@ -19,6 +19,15 @@ use std::env::args;
 use std::iter;
 use std::path::Path;
 
+fn is_quiet(cmd: &Commands) -> bool {
+    match cmd {
+        Commands::Cat { quiet, .. }
+        | Commands::X { quiet, .. }
+        | Commands::Diff { quiet, .. } => *quiet,
+        _ => false,
+    }
+}
+
 fn main() -> Result<()> {
     miette::set_panic_hook();
     let all_args: Vec<String> = args().collect();
@@ -38,7 +47,8 @@ fn main() -> Result<()> {
 
             for path_str in zip_paths {
                 let path = Path::new(path_str);
-                if zip_paths.len() > 1 {
+                let quiet = is_quiet(&cli.command);
+                if zip_paths.len() > 1 && !quiet {
                     println!("📦 Archive: {path_str}");
                 }
 
@@ -102,7 +112,7 @@ fn main() -> Result<()> {
                 if let Err(e) = res {
                     eprintln!("Error processing {path_str}: {e:?}");
                 }
-                if zip_paths.len() > 1 {
+                if zip_paths.len() > 1 && !quiet {
                     println!("{}", "-".repeat(40));
                 }
             }
