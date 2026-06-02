@@ -7,6 +7,7 @@
 
 mod archive;
 mod commands;
+mod completions;
 mod display;
 mod errors;
 
@@ -29,9 +30,12 @@ fn is_quiet(cmd: &Commands) -> bool {
 
 fn main() -> Result<()> {
     miette::set_panic_hook();
+
+    clap_complete::CompleteEnv::with_factory(commands::Cli::command).complete();
+
     let all_args: Vec<String> = args().collect();
     let subcommands = [
-        "tree", "t", "cat", "bat", "list", "ls", "l", "find", "fd", "f", "grep", "g", "x", "exec", "help", "diff", "d",
+        "tree", "t", "cat", "bat", "list", "ls", "l", "find", "fd", "f", "grep", "g", "x", "exec", "help", "diff", "d", "completions", "completion",
     ];
 
     let sub_idx = all_args
@@ -45,6 +49,17 @@ fn main() -> Result<()> {
             let cli = Cli::parse_from(cmd_args);
 
             let mut has_errors = false;
+
+            if matches!(&cli.command, Commands::Completions { .. }) {
+                let Commands::Completions { shell } = &cli.command else {
+                    unreachable!()
+                };
+                completions::handle(*shell).map_err(|e| errors::ZipCrawlError::IoError {
+                    path: "stdout".into(),
+                    source: e,
+                })?;
+                return Ok(());
+            }
 
             for path_str in zip_paths {
                 let path = Path::new(path_str);
@@ -102,6 +117,7 @@ fn main() -> Result<()> {
                         args,
                         quiet,
                     } => commands::execute::handle(&mut manager, file, command, args, *quiet),
+                    Commands::Completions { .. } => unreachable!(),
                     Commands::Diff {
                         base,
                         exclude,
