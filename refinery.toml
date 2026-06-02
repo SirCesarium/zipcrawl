@@ -14,6 +14,8 @@ os = "linux"
 arch = ["x86_64", "arm64"]
 abi = "musl"
 packages = ["bin"]
+defaultFeatures = false
+features = ["cli"]
 
 [[targets]]
 id = "windows"
@@ -21,6 +23,8 @@ for = "zipcrawl"
 os = "windows"
 arch = ["x86_64"]
 packages = ["bin"]
+defaultFeatures = false
+features = ["cli"]
 
 [[targets]]
 id = "macos"
@@ -28,6 +32,8 @@ for = "zipcrawl"
 os = "macos"
 arch = ["x86_64", "arm64"]
 packages = ["bin"]
+defaultFeatures = false
+features = ["cli"]
 
 [[publish]]
 type = "builtin"

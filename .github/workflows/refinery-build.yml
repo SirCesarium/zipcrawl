@@ -40,9 +40,10 @@ jobs:
             headers: false
             linker_env:
               - CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc
-            features: []
-            features_str: ""
-            default_features: true
+            features:
+              - cli
+            features_str: cli
+            default_features: false
             abi: musl
           - artifact: zipcrawl
             artifact_type: bin
@@ -69,9 +70,10 @@ jobs:
             linker: aarch64-linux-gnu-gcc
             linker_env:
               - CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc
-            features: []
-            features_str: ""
-            default_features: true
+            features:
+              - cli
+            features_str: cli
+            default_features: false
             abi: musl
           - artifact: zipcrawl
             artifact_type: bin
@@ -94,9 +96,10 @@ jobs:
             bin_ext: .exe
             headers: false
             linker_env: []
-            features: []
-            features_str: ""
-            default_features: true
+            features:
+              - cli
+            features_str: cli
+            default_features: false
           - artifact: zipcrawl
             artifact_type: bin
             os: macos
@@ -118,9 +121,10 @@ jobs:
             bin_ext: ""
             headers: false
             linker_env: []
-            features: []
-            features_str: ""
-            default_features: true
+            features:
+              - cli
+            features_str: cli
+            default_features: false
           - artifact: zipcrawl
             artifact_type: bin
             os: macos
@@ -142,9 +146,10 @@ jobs:
             bin_ext: ""
             headers: false
             linker_env: []
-            features: []
-            features_str: ""
-            default_features: true
+            features:
+              - cli
+            features_str: cli
+            default_features: false
     steps:
       - name: Checkout
         uses: actions/checkout@v6
