@@ -1,130 +1,91 @@
-# 📦 ZipCrawl
+# zipcrawl
 
-Explore and stream ZIP archives without even extracting them.
+[![Crates.io](https://img.shields.io/crates/v/zipcrawl?style=flat-square)](https://crates.io/crates/zipcrawl)
+[![CI](https://img.shields.io/github/actions/workflow/status/SirCesarium/zipcrawl/ci.yml?branch=main&style=flat-square)](https://github.com/SirCesarium/zipcrawl/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/SirCesarium/zipcrawl?style=flat-square)]()
 
----
+Explore and stream ZIP archives without extracting them.
 
-`zipcrawl` is a fast, developer-focused CLI for inspecting, searching and processing ZIP archives as if they were regular filesystems without ever extracting them.
+```bash
+zipcrawl archive.zip tree                    # directory tree
+zipcrawl archive.zip list                    # flat listing
+zipcrawl archive.zip cat config.json         # stream file to stdout
+zipcrawl archive.zip grep "FATAL" --glob "*.log"
+zipcrawl archive.zip find "*.rs" --glob
+zipcrawl archive.zip x deploy.sh bash        # pipe file into a command
+zipcrawl v2.zip diff --base v1.zip           # compare two archives
+```
 
-## Features
-
-- **Tree view**
-  - Visualize archive structure with sizes and hierarchy
-  - `zipcrawl <file(s).zip> tree --sizes`
-  - Example: `zipcrawl archives/*.zip tree --sizes`
-
-- **Flat listing**
-  - List all files quickly
-  - `zipcrawl <file(s).zip> list --sizes`
-  - Example: `zipcrawl myArchive.zip list`
-
-- **Search**
-  - Find files by name or pattern
-  - `zipcrawl <file(s).zip> find <query>`
-  - Example: `zipcrawl *.jar find ".bat|.java|.toml"`
-
-- **Content grep**
-  - Search inside files without extraction
-  - `zipcrawl <file(s).zip> grep <pattern>`
-  - Example: `zipcrawl "logs-*.zip" grep "FATAL_ERROR"`
-
-- **Stream file contents**
-  - Pipe file contents into external tools
-  - `zipcrawl <file(s).zip> cat <path> | <command>`
-  - `zipcrawl <file(s).zip> x <path> <command>`
-  - Example: `zipcrawl path/to/folder/*.zip x myScript.sh bash`
-
-## Why ZipCrawl?
-
-Because extracting archives is _slow_, _messy_ and **unnecessary**
-
-`zipcrawl` lets you:
-
-- Inspect large archives instantly
-- Search code inside `.zip`, `.jar`, `.mrpack`, etc.
-- Keep your disk clean: No more folders cluttering your /tmp or Downloads
-- Search for a specific file or string across dozens of ZIPs with a single command.
-
-## Use cases
-
-- Inspecting any ZIP archive
-- Debugging build artifacts
-- Reverse engineering archives
-- Grepping code inside compressed files
-
-## Security
-
-`zipcrawl` is built with security in mind to handle untrusted archives safely:
-
-- **Zip Bomb Protection:** Automatically detects and rejects archives with suspicious compression ratios or excessive uncompressed sizes.
-- **Path Traversal Defense:** Strict validation of internal paths to prevent files from attempting to access or overwrite locations outside the extraction context (safe `../` handling).
-- **Memory Efficient:** Processes data via streaming/seeking. It never loads the entire ZIP into RAM.
-
-## Installation
-
-### Direct Download (Recommended)
-
-Grab the pre-built binary for your operating system from the [Latest Releases](https://github.com/SirCesarium/zipcrawl/releases/latest).
-
-- **Windows:** Download `zipcrawl-windows-amd64.exe`.
-- **macOS:** Download `zipcrawl-macos-arm64` (Apple Silicon) or `intel`.
-- **Linux:** Download `zipcrawl-linux-amd64` (or `musl` for a static binary).
-
-### From Source (Cargo)
-
-By default, this installs the CLI and NerdFont support:
+## Install
 
 ```bash
 cargo install zipcrawl
 ```
 
-If you don't use a NerdFont and want plain ASCII icons:
+Without NerdFont icons:
 
 ```bash
 cargo install zipcrawl --no-default-features --features cli
 ```
 
-## Command Reference
+One-liner (detects OS, downloads binary, installs completions, prompts for NerdFonts):
 
-| Command | Description                  | Flags (Short/Long)                                                                                    | Options / Details                                                                                  |
-| :------ | :--------------------------- | :---------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------- |
-| `tree`  | Recursive tree visualization | `-d`, `--depth` <br> `-s`, `--sizes`                                                                  | Default depth: 4. Shows uncompressed sizes.                                                        |
-| `list`  | Flat entry listing           | `-s`, `--sizes`                                                                                       | Optimized for quick scans of all entries.                                                          |
-| `cat`   | Stream file content          | `-q`, `--quiet`                                                                                       | Supports **glob patterns**. Quiet hides headers.                                                   |
-| `find`  | Search for entries           | `-g`, `--glob` <br> `-p`, `--path` <br> `-t`, `--entry-type`                                          | Switch between Regex (default) and Glob. <br> Types: `f` (file) or `d` (directory).                |
-| `grep`  | Pattern match in files       | `-g`, `--glob` <br> `-p`, `--path`                                                                    | Filter by file extension or subdirectory <br> before searching content.                            |
-| `diff`  | Compare archives             | `-b`, `--base` <br> `-m`, `--mode` <br> `-i`, `--include` <br> `-e`, `--exclude` <br> `-q`, `--quiet` | **Modes**: `default`, `structure`, `stats`, `full`. <br> Supports comma-separated include/exclude. |
-| `x`     | Execute command              | `-q`, `--quiet`                                                                                       | Passes file content to `stdin` of the command.                                                     |
-
-## Quick Examples
-
-| Task                     | Command                                                         |
-| :----------------------- | :-------------------------------------------------------------- |
-| **Audit changes**        | `zipcrawl new.zip diff --base old.zip --mode full`              |
-| **Search in Rust files** | `zipcrawl app.zip grep "fn main" --glob "*.rs"`                 |
-| **Find deep JSONs**      | `zipcrawl data.zip find "*.json" --glob --path "configs/"`      |
-| **Check Zip Size**       | `zipcrawl archive.zip tree --sizes --depth 2`                   |
-| **Format JSON via pipe** | `zipcrawl app.zip cat "manifest.json" --quiet \| jq .`          |
-| **Check checksums**      | `zipcrawl bundle.zip x "*" sha256sum`                           |
-| **Compare Structure**    | `zipcrawl v2.zip diff -b v1.zip -m structure -e "temp/*,*.log"` |
-
-## 🦀 Use as a Library
-
-`zipcrawl` isn't just a CLI, it's a modular Rust crate. You can integrate the `ZipManager` engine into your own projects to handle archives with the same safety and speed.
-
-```toml
-[dependencies]
-zipcrawl = { version = "1", default-features = false }
+```bash
+curl -fsSL https://raw.githubusercontent.com/SirCesarium/zipcrawl/main/scripts/install.sh | bash
 ```
 
-```rust
-use zipcrawl::ZipManager;
-use std::path::Path;
+## Completions
 
-let mut manager = ZipManager::new(Path::new("archive.zip"))?;
-let entries = manager.entries()?;
+The install script sets these up automatically. Manual:
+
+```bash
+# fish
+zipcrawl completions fish > ~/.config/fish/completions/zipcrawl.fish
+
+# zsh
+zipcrawl completions zsh > /usr/local/share/zsh/site-functions/_zipcrawl
+
+# bash
+eval "$(COMPLETE=bash zipcrawl)"
+```
+
+Once installed, `archive.zip cat <TAB>` completes files from inside the archive.
+
+## Commands
+
+| Command | Alias | What |
+|---------|-------|------|
+| `tree` | `t` | Directory tree |
+| `list` | `ls`, `l` | Flat entry listing |
+| `cat` | | Stream file to stdout (raw) |
+| `bat` | | Stream file with syntax highlighting |
+| `find` | `fd`, `f` | Find files by regex (or `-g` glob) |
+| `grep` | `g` | Search file contents |
+| `x` | `exec` | Pipe file content into a command |
+| `diff` | `d` | Compare two archives |
+| `completions` | | Generate shell completion scripts |
+
+Flags:
+
+| Flag | On | What |
+|------|----|------|
+| `-s`, `--sizes` | tree, list | Show file sizes |
+| `-d`, `--depth` | tree | Max depth (default 4) |
+| `-g`, `--glob` | find, grep | Use glob instead of regex |
+| `-p`, `--path` | find, grep | Limit to subdirectory |
+| `-t`, `--entry-type` | find | `f` (files) or `d` (dirs) |
+| `-q`, `--quiet` | x, diff | Suppress archive headers |
+| `-m`, `--mode` | diff | `default`, `structure`, `stats`, `full` |
+
+## Piping
+
+`cat` streams raw content to stdout. Pipe into anything — [jq](https://jqlang.org) for JSON, [tyg](https://github.com/SirCesarium/tyg) for type generation from data samples, sha256sum, anything that reads stdin:
+
+```bash
+zipcrawl data.zip cat config.json | jq .server.port
+zipcrawl releases/*.zip cat data.yaml | tyg --lang typescript
 ```
 
 ## License
 
-This project is licensed under [MIT License](./LICENSE).
+MIT
