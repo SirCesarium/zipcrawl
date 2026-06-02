@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use clap_complete::shells::Shell;
 
 pub mod bat;
 pub mod cat;
@@ -85,11 +86,16 @@ pub enum Commands {
     X {
         file: String,
         command: String,
-        #[arg(trailing_var_arg = true)]
         args: Vec<String>,
 
         #[arg(short, long)]
         quiet: bool,
+    },
+    /// Generate shell completion scripts
+    #[command(alias = "completion")]
+    Completions {
+        #[arg(value_enum)]
+        shell: Shell,
     },
     /// Compare archives against a base ZIP file
     #[command(alias = "d")]
