@@ -3,7 +3,8 @@ use crate::display::TreeWriter;
 use crate::errors::ZipCrawlError;
 
 pub fn handle(manager: &mut ZipManager, show_sizes: bool) -> Result<(), ZipCrawlError> {
-    let entries = manager.entries()?;
+    let mut entries = manager.entries()?;
+    entries.sort_by(|a, b| a.name.cmp(&b.name));
     let total_size: u64 = entries.iter().map(|e| e.size).sum();
 
     for entry in entries {

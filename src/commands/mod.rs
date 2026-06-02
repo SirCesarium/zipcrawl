@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 
+pub mod bat;
 pub mod cat;
 pub mod diff;
 pub mod execute;
@@ -34,11 +35,13 @@ pub enum Commands {
         #[arg(short, long)]
         sizes: bool,
     },
-    /// Display contents of a file
+    /// Display contents of a file (raw, no headers)
     Cat {
         file: String,
-        #[arg(short, long)]
-        quiet: bool,
+    },
+    /// Display contents of a file with syntax highlighting
+    Bat {
+        file: String,
     },
     /// List files and directories
     #[command(aliases = &["ls", "l"])]
@@ -78,6 +81,7 @@ pub enum Commands {
         path: Option<String>,
     },
     /// Execute a command on a file
+    #[command(aliases = &["exec"])]
     X {
         file: String,
         command: String,

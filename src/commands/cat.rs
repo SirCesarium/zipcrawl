@@ -1,14 +1,9 @@
 use crate::archive::ZipManager;
-use crate::display::TreeWriter;
 use crate::errors::ZipCrawlError;
 use glob::Pattern;
 use std::io;
 
-pub fn handle(
-    manager: &mut ZipManager,
-    file_pattern: &str,
-    quiet: bool,
-) -> Result<(), ZipCrawlError> {
+pub fn handle(manager: &mut ZipManager, file_pattern: &str) -> Result<(), ZipCrawlError> {
     let pattern = Pattern::new(file_pattern).map_err(|_| ZipCrawlError::InvalidPath {
         path: file_pattern.to_string(),
     })?;
@@ -27,10 +22,6 @@ pub fn handle(
     }
 
     for file_name in matches {
-        if !quiet {
-            TreeWriter::print_file_header(&file_name);
-        }
-
         manager.stream_file(&file_name, |reader| {
             io::copy(reader, &mut io::stdout()).map_err(|e| ZipCrawlError::IoError {
                 path: file_name.clone(),
@@ -38,10 +29,6 @@ pub fn handle(
             })?;
             Ok(())
         })?;
-
-        if !quiet {
-            println!();
-        }
     }
 
     Ok(())

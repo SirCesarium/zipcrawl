@@ -22,9 +22,7 @@ use std::process::exit;
 
 fn is_quiet(cmd: &Commands) -> bool {
     match cmd {
-        Commands::Cat { quiet, .. }
-        | Commands::X { quiet, .. }
-        | Commands::Diff { quiet, .. } => *quiet,
+        Commands::X { quiet, .. } | Commands::Diff { quiet, .. } => *quiet,
         _ => false,
     }
 }
@@ -33,7 +31,7 @@ fn main() -> Result<()> {
     miette::set_panic_hook();
     let all_args: Vec<String> = args().collect();
     let subcommands = [
-        "tree", "t", "cat", "list", "ls", "l", "find", "fd", "f", "grep", "g", "x", "help", "diff", "d",
+        "tree", "t", "cat", "bat", "list", "ls", "l", "find", "fd", "f", "grep", "g", "x", "exec", "help", "diff", "d",
     ];
 
     let sub_idx = all_args
@@ -69,8 +67,11 @@ fn main() -> Result<()> {
                     Commands::Tree { depth, sizes } => {
                         commands::tree::handle(&mut manager, *depth, *sizes)
                     }
-                    Commands::Cat { file, quiet } => {
-                        commands::cat::handle(&mut manager, file, *quiet)
+                    Commands::Cat { file } => {
+                        commands::cat::handle(&mut manager, file)
+                    }
+                    Commands::Bat { file } => {
+                        commands::bat::handle(&mut manager, file)
                     }
                     Commands::List { sizes } => commands::list::handle(&mut manager, *sizes),
                     Commands::Find {
