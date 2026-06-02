@@ -74,9 +74,11 @@ impl TreeWriter {
     pub fn get_icon_for_name(name: &str, is_dir: bool) -> String {
         #[cfg(not(feature = "nerdfonts"))]
         {
-            return (if is_dir { "[D]" } else { "[F]" })
+            #[allow(unused_variables)]
+            let _ = name;
+            (if is_dir { "[D]" } else { "[F]" })
                 .bright_blue()
-                .to_string();
+                .to_string()
         }
 
         #[cfg(feature = "nerdfonts")]
@@ -131,7 +133,7 @@ impl TreeWriter {
         let bytes_f = bytes as f64;
         let i = bytes_f.log(1024.0).floor();
         let unit_idx = (i as usize).min(units.len() - 1);
-        let p = 1024_f64.powi(i32::try_from(unit_idx).unwrap_or(0));
+        let p = 1024_f64.powi(unit_idx as i32);
         format!("{:.1} {}", bytes_f / p, units[unit_idx])
     }
 
@@ -204,12 +206,12 @@ impl DiffWriter {
         }
     }
 
-    /// Cabecera para el bloque de cambios de línea
+    /// Header for the line-change block
     pub fn line_diff_header() -> String {
         "--- Line Changes ---".dimmed().to_string()
     }
 
-    /// Separador para el bloque de cambios de línea
+    /// Separator for the line-change block
     pub fn line_diff_footer() -> String {
         "--------------------".dimmed().to_string()
     }

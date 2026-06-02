@@ -14,10 +14,11 @@ use crate::archive::ZipManager;
 use crate::commands::{Cli, Commands};
 use clap::CommandFactory;
 use clap::Parser;
-use miette::Result;
+use miette::{Report, Result};
 use std::env::args;
 use std::iter;
 use std::path::Path;
+use std::process::exit;
 
 fn is_quiet(cmd: &Commands) -> bool {
     match cmd {
@@ -45,6 +46,8 @@ fn main() -> Result<()> {
             let cmd_args = iter::once(all_args[0].clone()).chain(all_args[idx..].iter().cloned());
             let cli = Cli::parse_from(cmd_args);
 
+            let mut has_errors = false;
+
             for path_str in zip_paths {
                 let path = Path::new(path_str);
                 let quiet = is_quiet(&cli.command);
@@ -52,7 +55,15 @@ fn main() -> Result<()> {
                     println!("📦 Archive: {path_str}");
                 }
 
-                let mut manager = ZipManager::new(path)?;
+                let manager = ZipManager::new(path);
+                let mut manager = match manager {
+                    Ok(m) => m,
+                    Err(e) => {
+                        has_errors = true;
+                        eprintln!("{:?}", Report::from(e));
+                        continue;
+                    }
+                };
 
                 let res = match &cli.command {
                     Commands::Tree { depth, sizes } => {
@@ -99,8 +110,8 @@ fn main() -> Result<()> {
                     } => commands::diff::handle(
                         &mut manager,
                         base,
-                        matches!(mode, commands::DiffMode::Structure),
-                        matches!(mode, commands::DiffMode::Stats),
+                        !matches!(mode, commands::DiffMode::Default),
+                        matches!(mode, commands::DiffMode::Stats) || matches!(mode, commands::DiffMode::Full),
                         matches!(mode, commands::DiffMode::Full),
                         matches!(mode, commands::DiffMode::Full),
                         include.as_deref(),
@@ -110,11 +121,16 @@ fn main() -> Result<()> {
                 };
 
                 if let Err(e) = res {
-                    eprintln!("Error processing {path_str}: {e:?}");
+                    has_errors = true;
+                    eprintln!("{:?}", Report::from(e));
                 }
                 if zip_paths.len() > 1 && !quiet {
                     println!("{}", "-".repeat(40));
                 }
+            }
+
+            if has_errors {
+                exit(1);
             }
         }
         _ => {

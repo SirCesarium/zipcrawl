@@ -10,6 +10,6 @@ jobs:
         with:
           components: clippy
       - name: Lint
-        run: cargo clippy -- -D warnings
-      - name: Check
-        run: cargo check
+        run: cargo clippy --all-features --tests -- -D warnings
+      - name: Test
+        run: cargo test --all-features

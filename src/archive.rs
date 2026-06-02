@@ -1,7 +1,6 @@
 use crate::errors::ZipCrawlError;
 use core::fmt;
 use std::fs::File;
-use std::io::{Error, ErrorKind, Read};
 use std::path::Component::ParentDir;
 use std::path::Path;
 use zip::read::ZipFile;
@@ -135,38 +134,6 @@ impl ZipManager {
     {
         let mut file = self.open_file(name)?;
         f(&mut file)
-    }
-
-    /// Reads the full content of a file into a byte buffer.
-    ///
-    /// This method is subject to `MAX_SIZE` limits for safety.
-    ///
-    /// # Deprecated
-    /// Use [`ZipManager::stream_file`] or [`ZipManager::open_file`] to process data
-    /// without high memory allocation (Zero-copy/Streaming approach).
-    #[deprecated(since = "1.1.1", note = "High memory usage. Use stream_file instead.")]
-    #[allow(unused)]
-    pub fn read_file_content(&mut self, name: &str) -> Result<Vec<u8>, ZipCrawlError> {
-        let file = self.open_file(name)?;
-
-        let size = usize::try_from(file.size()).map_err(|_| ZipCrawlError::IoError {
-            path: name.to_string(),
-            source: Error::new(
-                ErrorKind::InvalidData,
-                "File size exceeds system architecture limits",
-            ),
-        })?;
-
-        let mut buffer = Vec::with_capacity(size);
-
-        file.take(Self::MAX_SIZE)
-            .read_to_end(&mut buffer)
-            .map_err(|e| ZipCrawlError::IoError {
-                path: name.to_string(),
-                source: e,
-            })?;
-
-        Ok(buffer)
     }
 }
 
