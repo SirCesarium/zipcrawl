@@ -1,8 +1,7 @@
 use crate::archive::ZipManager;
 use crate::errors::ZipCrawlError;
-use regex::Regex;
-
 use glob::Pattern;
+use regex::Regex;
 
 pub fn handle(
     manager: &mut ZipManager,
@@ -13,6 +12,23 @@ pub fn handle(
 ) -> Result<(), ZipCrawlError> {
     let filter_f = entry_type == Some("f");
     let filter_d = entry_type == Some("d");
+
+    let glob_matcher = if use_glob {
+        Some(Pattern::new(query).map_err(|_| ZipCrawlError::InvalidGlob {
+            glob: query.to_string(),
+        })?)
+    } else {
+        None
+    };
+
+    let regex_matcher = if !use_glob {
+        Some(Regex::new(query).map_err(|e| ZipCrawlError::InvalidRegex {
+            regex: query.to_string(),
+            source: e,
+        })?)
+    } else {
+        None
+    };
 
     for entry in manager.entries()? {
         if filter_f && entry.is_dir {
@@ -28,14 +44,12 @@ pub fn handle(
             continue;
         }
 
-        let is_match = if use_glob {
-            Pattern::new(query)
-                .map(|p| p.matches(&entry.name))
-                .unwrap_or(false)
+        let is_match = if let Some(ref p) = glob_matcher {
+            p.matches(&entry.name)
+        } else if let Some(ref re) = regex_matcher {
+            re.is_match(&entry.name)
         } else {
-            Regex::new(query)
-                .map(|re| re.is_match(&entry.name))
-                .unwrap_or(false)
+            false
         };
 
         if is_match {

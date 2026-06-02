@@ -1,12 +1,14 @@
 use crate::errors::ZipCrawlError;
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufReader, BufWriter, Read, Write};
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Component, Path, PathBuf};
 use std::process::id as process_id;
 use zip::write::SimpleFileOptions;
 use zip::CompressionMethod;
 use zip::ZipWriter;
+
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 
 const DEFAULT_BUF_SIZE: usize = 128 * 1024;
 
@@ -124,7 +126,11 @@ impl ZipCompressor {
             source: e,
         })?;
 
-        let options = make_options(&self.options, Some(metadata.permissions().mode()));
+        #[cfg(unix)]
+        let perm = Some(metadata.permissions().mode());
+        #[cfg(not(unix))]
+        let perm = None;
+        let options = make_options(&self.options, perm);
         let writer = self.writer()?;
         writer.start_file(arc_name, options)?;
 

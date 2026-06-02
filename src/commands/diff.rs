@@ -31,14 +31,14 @@ pub fn handle(
     let include_patterns: Vec<Pattern> = include
         .unwrap_or_default()
         .iter()
-        .filter_map(|p| Pattern::new(p).ok())
-        .collect();
+        .map(|p| Pattern::new(p).map_err(|_| ZipCrawlError::InvalidGlob { glob: p.clone() }))
+        .collect::<Result<_, _>>()?;
 
     let exclude_patterns: Vec<Pattern> = exclude
         .unwrap_or_default()
         .iter()
-        .filter_map(|p| Pattern::new(p).ok())
-        .collect();
+        .map(|p| Pattern::new(p).map_err(|_| ZipCrawlError::InvalidGlob { glob: p.clone() }))
+        .collect::<Result<_, _>>()?;
 
     let current_map: HashMap<String, ZipEntry> = manager
         .entries()?
