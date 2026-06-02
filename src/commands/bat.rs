@@ -55,8 +55,14 @@ pub fn handle(manager: &mut ZipManager, file_pattern: &str) -> Result<(), ZipCra
             Ok(())
         })?;
 
+        let ext = file_name.split('.').next_back().unwrap_or("");
         let syntax = ss
-            .find_syntax_by_extension(file_name.split('.').next_back().unwrap_or(""))
+            .find_syntax_by_extension(ext)
+            .or_else(|| match ext {
+                "ts" | "tsx" | "mts" | "cts" => ss.find_syntax_by_extension("js"),
+                "jsx" | "mjs" | "cjs" | "vue" | "svelte" => ss.find_syntax_by_extension("js"),
+                _ => None,
+            })
             .unwrap_or_else(|| ss.find_syntax_plain_text());
 
         let mut highlighter = HighlightLines::new(syntax, &ts.themes["base16-ocean.dark"]);
