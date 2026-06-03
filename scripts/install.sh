@@ -156,6 +156,7 @@ ZSH
                     echo ""
                     echo "$marker"
                     echo "source \"$zsh_dir/_zipcrawl\""
+                    echo "compdef _zipcrawl zipcrawl"
                 } >> "$rc"
             fi
         fi
