@@ -147,6 +147,18 @@ _zipcrawl() {
 }
 _zipcrawl
 ZSH
+
+        local rc="${ZDOTDIR:-$HOME}/.zshrc"
+        if [ -f "$rc" ]; then
+            local marker='# zipcrawl completions'
+            if ! grep -qsF "$marker" "$rc" 2>/dev/null; then
+                {
+                    echo ""
+                    echo "$marker"
+                    echo "source \"$zsh_dir/_zipcrawl\""
+                } >> "$rc"
+            fi
+        fi
     fi
 
     if command -v bash &>/dev/null; then
