@@ -33,6 +33,9 @@ pub struct ZipManager {
     archive: ZipArchive<File>,
     /// The source path of the ZIP file on the system.
     pub path_name: String,
+    /// Keeps a temp file alive when the archive was created from a reader.
+    #[allow(dead_code)]
+    _tempfile: Option<tempfile::NamedTempFile>,
 }
 
 impl ZipManager {
@@ -51,6 +54,35 @@ impl ZipManager {
         Ok(Self {
             archive,
             path_name: path.to_string_lossy().to_string(),
+            _tempfile: None,
+        })
+    }
+
+    /// Creates a manager from any `Read` source (e.g. stdin, network).
+    ///
+    /// The content is buffered into a temporary file on disk, then opened
+    /// as a standard ZIP archive. The temp file is kept alive for the
+    /// lifetime of `ZipManager`.
+    #[allow(dead_code)]
+    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Self, ZipCrawlError> {
+        let mut tmp = tempfile::NamedTempFile::new().map_err(|e| ZipCrawlError::IoError {
+            path: String::from("<tempfile>"),
+            source: e,
+        })?;
+        io::copy(reader, &mut tmp).map_err(|e| ZipCrawlError::IoError {
+            path: String::from("<stream>"),
+            source: e,
+        })?;
+        let path = tmp.path().to_owned();
+        let file = File::open(&path).map_err(|e| ZipCrawlError::IoError {
+            path: path.to_string_lossy().to_string(),
+            source: e,
+        })?;
+        let archive = ZipArchive::new(file)?;
+        Ok(Self {
+            archive,
+            path_name: String::from("<stream>"),
+            _tempfile: Some(tmp),
         })
     }
 
@@ -268,7 +300,7 @@ impl fmt::Debug for ZipManager {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::absolute_paths)]
 mod tests {
     use super::*;
     use std::io::Write;
@@ -287,6 +319,18 @@ mod tests {
         }
         zip.finish().unwrap();
         (dir, path)
+    }
+
+    fn make_zip_bytes(contents: &[(&str, &str)]) -> Vec<u8> {
+        let mut buf = std::io::Cursor::new(Vec::new());
+        let mut zip = ZipWriter::new(&mut buf);
+        for (name, content) in contents {
+            zip.start_file::<&str, ()>(name, Default::default())
+                .unwrap();
+            zip.write_all(content.as_bytes()).unwrap();
+        }
+        zip.finish().unwrap();
+        buf.into_inner()
     }
 
     #[test]
@@ -418,5 +462,35 @@ value = 42"#,
         let err = mgr.extract_prefix("", dest.path()).unwrap_err();
         assert!(matches!(err, ZipCrawlError::InvalidPath { .. }));
         assert!(!dest.path().join("outside.txt").exists());
+    }
+
+    #[test]
+    fn from_reader_reads_entry() {
+        let bytes = make_zip_bytes(&[("hello.txt", "Hello from reader!")]);
+        let mut reader = std::io::Cursor::new(bytes);
+        let mut mgr = ZipManager::from_reader(&mut reader).unwrap();
+        assert_eq!(mgr.path_name, "<stream>");
+        let entries = mgr.entries().unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].name, "hello.txt");
+        let content = mgr.read_to_string("hello.txt").unwrap();
+        assert_eq!(content, "Hello from reader!");
+    }
+
+    #[test]
+    fn from_reader_multiple_entries() {
+        let bytes = make_zip_bytes(&[("a.txt", "aaa"), ("b.txt", "bbb"), ("c.txt", "ccc")]);
+        let mut reader = std::io::Cursor::new(bytes);
+        let mut mgr = ZipManager::from_reader(&mut reader).unwrap();
+        let entries = mgr.entries().unwrap();
+        assert_eq!(entries.len(), 3);
+        assert_eq!(mgr.read_to_string("b.txt").unwrap(), "bbb");
+    }
+
+    #[test]
+    fn from_reader_invalid_zip_errors() {
+        let mut reader = std::io::Cursor::new(b"not a zip file");
+        let err = ZipManager::from_reader(&mut reader).unwrap_err();
+        assert!(matches!(err, ZipCrawlError::ZipError(_)));
     }
 }
