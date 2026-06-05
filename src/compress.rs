@@ -7,6 +7,9 @@ use zip::write::SimpleFileOptions;
 use zip::CompressionMethod;
 use zip::ZipWriter;
 
+#[cfg(feature = "serde")]
+use serde::Serialize;
+
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
@@ -282,6 +285,84 @@ impl ZipCompressor {
         Ok(())
     }
 
+    /// Compress data from a [`Read`]er, reading until EOF.
+    ///
+    /// Unlike [`compress_reader`](Self::compress_reader), this method does **not**
+    /// require a known `size`. Data is read until the reader ends (or the
+    /// configured `max_file_size` limit is reached).
+    ///
+    /// * `reader` – Source of bytes (e.g. file, network stream).
+    /// * `arc_name` – Destination path inside the ZIP archive.
+    pub fn compress_reader_to_end<R: Read>(
+        &mut self,
+        mut reader: R,
+        arc_name: &str,
+    ) -> Result<(), ZipCrawlError> {
+        self.validate_arc_name(arc_name)?;
+
+        let max_size = self.options.max_file_size;
+        let options = make_options(&self.options, None);
+        let writer = self.writer()?;
+        writer.start_file(arc_name, options)?;
+
+        let mut limited = reader.by_ref().take(max_size);
+        let count = io::copy(&mut limited, writer).map_err(|e| ZipCrawlError::IoError {
+            path: arc_name.to_string(),
+            source: e,
+        })?;
+
+        if count >= max_size {
+            return Err(ZipCrawlError::SizeLimitExceeded {
+                limit: max_size,
+                actual: count,
+            });
+        }
+
+        Ok(())
+    }
+
+    /// Serialize a value and add it as an entry in the archive.
+    ///
+    /// The format is chosen based on the file extension:
+    /// - `.json` → `serde_json`
+    /// - `.toml` → `toml`
+    ///
+    /// Requires the `serde` feature.
+    #[cfg(feature = "serde")]
+    pub fn serialize_and_add<T: Serialize>(
+        &mut self,
+        name: &str,
+        data: &T,
+    ) -> Result<(), ZipCrawlError> {
+        let extension = Path::new(name)
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(str::to_lowercase);
+
+        let bytes = match extension.as_deref() {
+            Some("json") => {
+                serde_json::to_vec(data).map_err(|e| ZipCrawlError::SerializeError {
+                    file: name.to_string(),
+                    details: e.to_string(),
+                })?
+            }
+            Some("toml") => toml::to_string(data)
+                .map_err(|e| ZipCrawlError::SerializeError {
+                    file: name.to_string(),
+                    details: e.to_string(),
+                })?
+                .into_bytes(),
+            _ => {
+                return Err(ZipCrawlError::SerializeError {
+                    file: name.to_string(),
+                    details: format!("unsupported extension: {:?}", extension),
+                })
+            }
+        };
+
+        self.compress_bytes(&bytes, name)
+    }
+
     /// Finalise the ZIP archive and atomically write it to the output path.
     ///
     /// The file is first written to a temporary file in the same directory,
@@ -421,5 +502,142 @@ fn create_temp_file(path: &Path) -> Result<(PathBuf, File), ZipCrawlError> {
             path: temp_path.to_string_lossy().to_string(),
             source: e,
         }),
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+    use crate::archive::ZipManager;
+    use std::io::Cursor;
+
+    fn test_source_dir() -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("file.txt"), b"hello world").unwrap();
+        fs::create_dir_all(dir.path().join("sub")).unwrap();
+        fs::write(dir.path().join("sub/nested.txt"), b"nested content").unwrap();
+        dir
+    }
+
+    #[test]
+    fn compress_reader_to_end_writes_all_data() {
+        let src = test_source_dir();
+        let dest = tempfile::tempdir().unwrap();
+        let zip_path = dest.path().join("out.zip");
+        let data = fs::read(src.path().join("file.txt")).unwrap();
+
+        let mut compressor = ZipCompressor::new(&zip_path).unwrap();
+        compressor
+            .compress_reader_to_end(Cursor::new(data), "file.txt")
+            .unwrap();
+        compressor.finish().unwrap();
+
+        let mut mgr = ZipManager::new(&zip_path).unwrap();
+        let content = mgr.read_to_string("file.txt").unwrap();
+        assert_eq!(content, "hello world");
+    }
+
+    #[test]
+    fn compress_reader_to_end_enforces_size_limit() {
+        let dest = tempfile::tempdir().unwrap();
+        let zip_path = dest.path().join("out.zip");
+        let big_data = vec![0u8; 100];
+
+        let options = CompressOptions {
+            max_file_size: 50,
+            ..Default::default()
+        };
+        let mut compressor = ZipCompressor::with_options(&zip_path, options).unwrap();
+        let err = compressor
+            .compress_reader_to_end(Cursor::new(big_data), "big.bin")
+            .unwrap_err();
+        assert!(matches!(err, ZipCrawlError::SizeLimitExceeded { .. }));
+    }
+
+    #[test]
+    fn compress_reader_to_end_rejects_traversal() {
+        let dest = tempfile::tempdir().unwrap();
+        let zip_path = dest.path().join("out.zip");
+        let mut compressor = ZipCompressor::new(&zip_path).unwrap();
+        let err = compressor
+            .compress_reader_to_end(Cursor::new(b"data"), "../outside.txt")
+            .unwrap_err();
+        assert!(matches!(err, ZipCrawlError::InvalidPath { .. }));
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn serialize_and_add_json() {
+        let dest = tempfile::tempdir().unwrap();
+        let zip_path = dest.path().join("out.zip");
+
+        #[derive(Serialize)]
+        struct Data {
+            name: String,
+            value: i32,
+        }
+
+        let mut compressor = ZipCompressor::new(&zip_path).unwrap();
+        compressor
+            .serialize_and_add(
+                "data.json",
+                &Data {
+                    name: "test".into(),
+                    value: 42,
+                },
+            )
+            .unwrap();
+        compressor.finish().unwrap();
+
+        let mut mgr = ZipManager::new(&zip_path).unwrap();
+        let raw = mgr.read_to_string("data.json").unwrap();
+        assert_eq!(raw, r#"{"name":"test","value":42}"#);
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn serialize_and_add_toml() {
+        let dest = tempfile::tempdir().unwrap();
+        let zip_path = dest.path().join("out.zip");
+
+        #[derive(Serialize)]
+        struct Data {
+            name: String,
+            value: i32,
+        }
+
+        let mut compressor = ZipCompressor::new(&zip_path).unwrap();
+        compressor
+            .serialize_and_add(
+                "config.toml",
+                &Data {
+                    name: "test".into(),
+                    value: 42,
+                },
+            )
+            .unwrap();
+        compressor.finish().unwrap();
+
+        let mut mgr = ZipManager::new(&zip_path).unwrap();
+        let raw = mgr.read_to_string("config.toml").unwrap();
+        assert!(raw.contains(r#"name = "test""#));
+        assert!(raw.contains("value = 42"));
+    }
+
+    #[cfg(feature = "serde")]
+    #[test]
+    fn serialize_and_add_unsupported_ext() {
+        let dest = tempfile::tempdir().unwrap();
+        let zip_path = dest.path().join("out.zip");
+        #[derive(Serialize)]
+        struct Data {
+            x: i32,
+        }
+        let mut compressor = ZipCompressor::new(&zip_path).unwrap();
+        let err = compressor
+            .serialize_and_add("data.yaml", &Data { x: 1 })
+            .unwrap_err();
+        assert!(matches!(err, ZipCrawlError::SerializeError { .. }));
     }
 }
