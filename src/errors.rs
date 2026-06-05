@@ -75,4 +75,29 @@ pub enum ZipCrawlError {
         help("Increase the max_file_size in CompressOptions or split the file.")
     )]
     SizeLimitExceeded { limit: u64, actual: u64 },
+
+    /// Failed to deserialize an entry from the archive.
+    #[cfg(feature = "serde")]
+    #[allow(dead_code)]
+    #[error("Failed to parse '{file}': {details}")]
+    #[diagnostic(code(zipcrawl::parse_error))]
+    ParseError { file: String, details: String },
+
+    /// Failed to serialize data for writing into the archive.
+    #[cfg(all(feature = "compress", feature = "serde"))]
+    #[allow(dead_code)]
+    #[error("Failed to serialize '{file}': {details}")]
+    #[diagnostic(code(zipcrawl::serialize_error))]
+    SerializeError { file: String, details: String },
+
+    /// I/O error during archive extraction.
+    #[allow(dead_code)]
+    #[error("Failed to extract entry '{entry}' to '{destination}': {source}")]
+    #[diagnostic(code(zipcrawl::extract_error))]
+    ExtractError {
+        entry: String,
+        destination: String,
+        #[source]
+        source: io::Error,
+    },
 }
