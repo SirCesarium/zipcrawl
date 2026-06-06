@@ -25,6 +25,9 @@ pub fn handle(
         .collect();
 
     if matches.is_empty() {
+        if quiet {
+            return Ok(());
+        }
         return Err(ZipCrawlError::FileNotFound {
             filename: file_pattern.to_string(),
         });
