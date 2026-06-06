@@ -23,7 +23,9 @@ use std::process::exit;
 
 fn is_quiet(cmd: &Commands) -> bool {
     match cmd {
-        Commands::X { quiet, .. } | Commands::Diff { quiet, .. } => *quiet,
+        Commands::X { quiet, .. }
+        | Commands::Diff { quiet, .. }
+        | Commands::Cat { quiet, .. } => *quiet,
         _ => false,
     }
 }
@@ -82,8 +84,8 @@ fn main() -> Result<()> {
                     Commands::Tree { depth, sizes } => {
                         commands::tree::handle(&mut manager, *depth, *sizes)
                     }
-                    Commands::Cat { file } => {
-                        commands::cat::handle(&mut manager, file)
+                    Commands::Cat { file, quiet } => {
+                        commands::cat::handle(&mut manager, file, *quiet)
                     }
                     Commands::Bat { file } => {
                         commands::bat::handle(&mut manager, file)
