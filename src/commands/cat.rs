@@ -3,7 +3,11 @@ use crate::errors::ZipCrawlError;
 use glob::Pattern;
 use std::io;
 
-pub fn handle(manager: &mut ZipManager, file_pattern: &str) -> Result<(), ZipCrawlError> {
+pub fn handle(
+    manager: &mut ZipManager,
+    file_pattern: &str,
+    quiet: bool,
+) -> Result<(), ZipCrawlError> {
     let pattern = Pattern::new(file_pattern).map_err(|_| ZipCrawlError::InvalidPath {
         path: file_pattern.to_string(),
     })?;
@@ -16,6 +20,9 @@ pub fn handle(manager: &mut ZipManager, file_pattern: &str) -> Result<(), ZipCra
         .collect();
 
     if matches.is_empty() {
+        if quiet {
+            return Ok(());
+        }
         return Err(ZipCrawlError::FileNotFound {
             filename: file_pattern.to_string(),
         });

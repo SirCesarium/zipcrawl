@@ -39,6 +39,10 @@ pub enum Commands {
     /// Display contents of a file (raw, no headers)
     Cat {
         file: String,
+
+        /// Quiet mode: suppress archive headers, separators and file-not-found errors
+        #[arg(short, long)]
+        quiet: bool,
     },
     /// Display contents of a file with syntax highlighting
     Bat {
