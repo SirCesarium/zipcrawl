@@ -1,6 +1,6 @@
 [package]
 name = "zipcrawl"
-version = "2.3.1"
+version = "2.4.0"
 edition = "2024"
 authors = ["SirCesarium"]
 description = "Explore and stream ZIP archives without even extracting them."
@@ -28,9 +28,10 @@ toml = { version = "0.8", optional = true }
 tempfile = "3.27.0"
 
 [features]
-default = ["nerdfonts", "cli"]
+default = ["nerdfonts", "cli", "exec"]
 nerdfonts = []
 cli = ["dep:clap", "dep:clap_complete"]
+exec = []
 compress = []
 serde = ["dep:serde", "dep:serde_json", "dep:toml"]
 

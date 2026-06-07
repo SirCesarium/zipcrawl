@@ -164,6 +164,7 @@ impl TreeWriter {
         format!("[{bar}] {percentage_display}")
     }
 
+    #[cfg(feature = "exec")]
     pub fn print_file_header(filename: &str) {
         let icon = Self::get_icon_for_name(filename, false);
         let separator = "─".repeat(filename.len() + 4).bright_black();
