@@ -4,6 +4,7 @@ use clap_complete::shells::Shell;
 pub mod bat;
 pub mod cat;
 pub mod diff;
+#[cfg(feature = "exec")]
 pub mod execute;
 pub mod find;
 pub mod grep;
@@ -86,6 +87,7 @@ pub enum Commands {
         path: Option<String>,
     },
     /// Execute a command on a file
+    #[cfg(feature = "exec")]
     #[command(aliases = &["exec"])]
     X {
         file: String,

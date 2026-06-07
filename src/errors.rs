@@ -32,6 +32,8 @@ pub enum ZipCrawlError {
     },
 
     /// Errors occurring during the execution of an external command via the `x` command.
+    #[cfg(feature = "exec")]
+    #[allow(dead_code)]
     #[error("Command execution failed: {cmd}")]
     #[diagnostic(code(zipcrawl::exec_error))]
     ExecutionError {

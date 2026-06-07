@@ -23,6 +23,7 @@ use std::process::exit;
 
 fn is_quiet(cmd: &Commands) -> bool {
     match cmd {
+        #[cfg(feature = "exec")]
         Commands::X { quiet, .. }
         | Commands::Diff { quiet, .. }
         | Commands::Cat { quiet, .. } => *quiet,
@@ -37,7 +38,12 @@ fn main() -> Result<()> {
 
     let all_args: Vec<String> = args().collect();
     let subcommands = [
-        "tree", "t", "cat", "bat", "list", "ls", "l", "find", "fd", "f", "grep", "g", "x", "exec", "help", "diff", "d", "completions", "completion",
+        "tree", "t", "cat", "bat", "list", "ls", "l", "find", "fd", "f", "grep", "g",
+        #[cfg(feature = "exec")]
+        "x",
+        #[cfg(feature = "exec")]
+        "exec",
+        "help", "diff", "d", "completions", "completion",
     ];
 
     let sub_idx = all_args
@@ -113,6 +119,7 @@ fn main() -> Result<()> {
                         glob.as_deref(),
                         path.as_deref(),
                     ),
+                    #[cfg(feature = "exec")]
                     Commands::X {
                         file,
                         command,
