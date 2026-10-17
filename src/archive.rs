@@ -93,7 +93,7 @@ impl ZipManager {
         for i in 0..len {
             let file = self.archive.by_index(i)?;
             entries.push(ZipEntry {
-                name: file.name().to_string(),
+                name: file.name()?.to_string(),
                 is_dir: file.is_dir(),
                 size: file.size(),
                 crc: file.crc32(),

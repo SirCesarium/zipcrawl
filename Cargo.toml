@@ -1,6 +1,6 @@
 [package]
 name = "zipcrawl"
-version = "2.4.0"
+version = "2.5.0"
 edition = "2024"
 authors = ["SirCesarium"]
 description = "Explore and stream ZIP archives without even extracting them."
@@ -11,16 +11,16 @@ keywords = ["zip", "cli", "explorer", "grep", "tree"]
 categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
-colored = "3.1.1"
+colored = { version = "3.1.1", optional = true }
 miette = { version = "7.6.0", features = ["fancy"] }
-regex = "1.12.3"
+regex = { version = "1.12.3", optional = true }
 thiserror = "2.0.18"
 zip = "9.0.1"
 clap = { version = "4.6.1", features = ["derive"], optional = true }
-glob = "0.3.3"
-similar = "3.1.1"
-minus = { version = "5.7.1", features = ["static_output"] }
-syntect = { version = "5.3.0", features = ["default-fancy"], default-features = false }
+glob = { version = "0.3.3", optional = true }
+similar = { version = "3.1.1", optional = true }
+minus = { version = "5.7.1", features = ["static_output"], optional = true }
+syntect = { version = "5.3.0", features = ["default-fancy"], default-features = false, optional = true }
 clap_complete = { version = "4.6.5", features = ["unstable-dynamic"], optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
@@ -30,9 +30,23 @@ tempfile = "3.27.0"
 [features]
 default = ["nerdfonts", "cli", "exec"]
 nerdfonts = []
-cli = ["dep:clap", "dep:clap_complete"]
+cli = [
+    "dep:clap",
+    "dep:clap_complete",
+    "dep:colored",
+    "dep:regex",
+    "dep:glob",
+    "dep:similar",
+    "dep:minus",
+    "dep:syntect",
+]
 exec = []
 compress = []
 serde = ["dep:serde", "dep:serde_json", "dep:toml"]
+
+[[bin]]
+name = "zipcrawl"
+path = "src/main.rs"
+required-features = ["cli"]
 
 [dev-dependencies]

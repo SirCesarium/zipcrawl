@@ -23,6 +23,7 @@ pub enum ZipCrawlError {
     ZipError(#[from] ZipError),
 
     /// Triggered when a provided search pattern is not a valid regular expression.
+    #[cfg(feature = "cli")]
     #[error("Invalid regex pattern: {regex}")]
     #[diagnostic(code(zipcrawl::invalid_regex))]
     InvalidRegex {
@@ -64,6 +65,7 @@ pub enum ZipCrawlError {
     ZipBombDetected { filename: String },
 
     /// Invalid glob pattern provided for filtering file entries.
+    #[cfg(feature = "cli")]
     #[error("Invalid glob pattern: {glob}")]
     #[diagnostic(code(zipcrawl::invalid_glob))]
     InvalidGlob { glob: String },
