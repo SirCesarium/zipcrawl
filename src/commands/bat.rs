@@ -3,13 +3,13 @@ use crate::display::TreeWriter;
 use crate::errors::ZipCrawlError;
 use colored::Colorize;
 use glob::Pattern;
-use minus::Pager;
+use minus::{Pager, page_all};
 use std::io::{self, Read};
 use syntect::easy::HighlightLines;
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSet;
-use syntect::util::as_24_bit_terminal_escaped;
 use syntect::util::LinesWithEndings;
+use syntect::util::as_24_bit_terminal_escaped;
 
 pub fn handle(manager: &mut ZipManager, file_pattern: &str) -> Result<(), ZipCrawlError> {
     let pattern = Pattern::new(file_pattern).map_err(|_| ZipCrawlError::InvalidPath {
@@ -81,7 +81,7 @@ pub fn handle(manager: &mut ZipManager, file_pattern: &str) -> Result<(), ZipCra
     let pager = Pager::new();
     pager.set_text(output).ok();
     pager.set_prompt("zipcrawl bat").ok();
-    minus::page_all(pager).map_err(|e| ZipCrawlError::IoError {
+    page_all(pager).map_err(|e| ZipCrawlError::IoError {
         path: "pager".into(),
         source: io::Error::other(e),
     })

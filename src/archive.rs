@@ -11,6 +11,12 @@ use zip::read::ZipFile;
 #[cfg(feature = "serde")]
 use serde::de::DeserializeOwned;
 
+#[cfg(feature = "serde")]
+use serde_json::from_str as from_json;
+
+#[cfg(feature = "serde")]
+use toml::from_str as from_toml;
+
 /// Represents a single entry within a ZIP archive.
 #[derive(Clone)]
 pub struct ZipEntry {
@@ -114,7 +120,8 @@ impl<R: Read + Seek> ZipManager<R> {
     /// use std::io;
     /// # use zipcrawl::archive::ZipManager;
     /// # use std::path::Path;
-    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # use std::error::Error;
+    /// # fn main() -> Result<(), Box<dyn Error>> {
     /// # let mut manager = ZipManager::new(Path::new("example.zip"))?;
     /// manager.stream_file("data.txt", |reader| {
     ///     io::copy(reader, &mut io::stdout()).expect("Failed to copy content to stdout");
@@ -166,11 +173,11 @@ impl<R: Read + Seek> ZipManager<R> {
             .map(str::to_lowercase);
 
         match ext.as_deref() {
-            Some("json") => serde_json::from_str(&raw).map_err(|e| ZipCrawlError::ParseError {
+            Some("json") => from_json(&raw).map_err(|e| ZipCrawlError::ParseError {
                 file: name.to_string(),
                 details: e.to_string(),
             }),
-            Some("toml") => toml::from_str(&raw).map_err(|e| ZipCrawlError::ParseError {
+            Some("toml") => from_toml(&raw).map_err(|e| ZipCrawlError::ParseError {
                 file: name.to_string(),
                 details: e.to_string(),
             }),
@@ -305,10 +312,16 @@ mod tests {
     use super::*;
     use std::io::Write;
     use std::path::PathBuf;
+    use tempfile::{TempDir, tempdir};
     use zip::ZipWriter;
 
-    fn create_test_zip(contents: &[(&str, &str)]) -> (tempfile::TempDir, PathBuf) {
-        let dir = tempfile::tempdir().unwrap();
+    #[cfg(feature = "serde")]
+    use serde::Deserialize;
+    #[cfg(feature = "serde")]
+    use serde_json::Value;
+
+    fn create_test_zip(contents: &[(&str, &str)]) -> (TempDir, PathBuf) {
+        let dir = tempdir().unwrap();
         let path = dir.path().join("test.zip");
         let file = File::create(&path).unwrap();
         let mut zip = ZipWriter::new(file);
@@ -322,7 +335,7 @@ mod tests {
     }
 
     fn make_zip_bytes(contents: &[(&str, &str)]) -> Vec<u8> {
-        let mut buf = std::io::Cursor::new(Vec::new());
+        let mut buf = Cursor::new(Vec::new());
         let mut zip = ZipWriter::new(&mut buf);
         for (name, content) in contents {
             zip.start_file::<&str, ()>(name, Default::default())
@@ -363,7 +376,7 @@ mod tests {
     fn read_and_deserialize_json() {
         let (_d, path) = create_test_zip(&[("data.json", r#"{"name":"test","value":42}"#)]);
         let mut mgr = ZipManager::new(&path).unwrap();
-        #[derive(serde::Deserialize, PartialEq, Debug)]
+        #[derive(Deserialize, PartialEq, Debug)]
         struct Data {
             name: String,
             value: i32,
@@ -387,7 +400,7 @@ mod tests {
 value = 42"#,
         )]);
         let mut mgr = ZipManager::new(&path).unwrap();
-        #[derive(serde::Deserialize, PartialEq, Debug)]
+        #[derive(Deserialize, PartialEq, Debug)]
         struct Data {
             name: String,
             value: i32,
@@ -407,9 +420,7 @@ value = 42"#,
     fn read_and_deserialize_unsupported_ext() {
         let (_d, path) = create_test_zip(&[("data.yaml", "foo: bar")]);
         let mut mgr = ZipManager::new(&path).unwrap();
-        let err = mgr
-            .read_and_deserialize::<serde_json::Value>("data.yaml")
-            .unwrap_err();
+        let err = mgr.read_and_deserialize::<Value>("data.yaml").unwrap_err();
         assert!(matches!(err, ZipCrawlError::ParseError { .. }));
     }
 
@@ -420,7 +431,7 @@ value = 42"#,
             ("overrides/scripts/init.lua", "init"),
             ("other/file.txt", "other"),
         ]);
-        let dest = tempfile::tempdir().unwrap();
+        let dest = tempdir().unwrap();
         let mut mgr = ZipManager::new(&path).unwrap();
         mgr.extract_prefix("overrides/", dest.path()).unwrap();
 
@@ -438,7 +449,7 @@ value = 42"#,
     #[test]
     fn extract_prefix_empty_prefix_extracts_all() {
         let (_d, path) = create_test_zip(&[("a.txt", "a"), ("b.txt", "b")]);
-        let dest = tempfile::tempdir().unwrap();
+        let dest = tempdir().unwrap();
         let mut mgr = ZipManager::new(&path).unwrap();
         mgr.extract_prefix("", dest.path()).unwrap();
         assert!(dest.path().join("a.txt").exists());
@@ -448,7 +459,7 @@ value = 42"#,
     #[test]
     fn extract_prefix_no_match_does_nothing() {
         let (_d, path) = create_test_zip(&[("file.txt", "content")]);
-        let dest = tempfile::tempdir().unwrap();
+        let dest = tempdir().unwrap();
         let mut mgr = ZipManager::new(&path).unwrap();
         mgr.extract_prefix("nonexistent/", dest.path()).unwrap();
         assert!(dest.path().read_dir().unwrap().next().is_none());
@@ -457,7 +468,7 @@ value = 42"#,
     #[test]
     fn extract_prefix_relative_rejects_parent_dir_components() {
         let (_d, path) = create_test_zip(&[("overrides/../outside.txt", "evil")]);
-        let dest = tempfile::tempdir().unwrap();
+        let dest = tempdir().unwrap();
         let mut mgr = ZipManager::new(&path).unwrap();
         let err = mgr.extract_prefix("", dest.path()).unwrap_err();
         assert!(matches!(err, ZipCrawlError::InvalidPath { .. }));
@@ -467,7 +478,7 @@ value = 42"#,
     #[test]
     fn from_reader_reads_entry() {
         let bytes = make_zip_bytes(&[("hello.txt", "Hello from reader!")]);
-        let mut reader = std::io::Cursor::new(bytes);
+        let mut reader = Cursor::new(bytes);
         let mut mgr = ZipManager::from_reader(&mut reader).unwrap();
         assert_eq!(mgr.path_name, "<stream>");
         let entries = mgr.entries().unwrap();
@@ -480,7 +491,7 @@ value = 42"#,
     #[test]
     fn from_reader_multiple_entries() {
         let bytes = make_zip_bytes(&[("a.txt", "aaa"), ("b.txt", "bbb"), ("c.txt", "ccc")]);
-        let mut reader = std::io::Cursor::new(bytes);
+        let mut reader = Cursor::new(bytes);
         let mut mgr = ZipManager::from_reader(&mut reader).unwrap();
         let entries = mgr.entries().unwrap();
         assert_eq!(entries.len(), 3);
@@ -489,7 +500,7 @@ value = 42"#,
 
     #[test]
     fn from_reader_invalid_zip_errors() {
-        let mut reader = std::io::Cursor::new(b"not a zip file");
+        let mut reader = Cursor::new(b"not a zip file");
         let err = ZipManager::from_reader(&mut reader).unwrap_err();
         assert!(matches!(err, ZipCrawlError::ZipError(_)));
     }

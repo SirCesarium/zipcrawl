@@ -2,7 +2,7 @@ use crate::archive::{ZipEntry, ZipManager};
 use crate::display::{DiffWriter, TreeWriter};
 use crate::errors::ZipCrawlError;
 use glob::Pattern;
-use minus::Pager;
+use minus::{Pager, page_all};
 use similar::TextDiff;
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Write as _;
@@ -166,7 +166,7 @@ pub fn handle(
     let pager = Pager::new();
     pager.set_text(output).ok();
     pager.set_prompt("zipcrawl diff").ok();
-    minus::page_all(pager).map_err(|e| ZipCrawlError::IoError {
+    page_all(pager).map_err(|e| ZipCrawlError::IoError {
         path: "pager".into(),
         source: io::Error::other(e),
     })

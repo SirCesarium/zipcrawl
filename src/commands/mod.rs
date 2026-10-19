@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use clap_complete::shells::Shell;
 
 pub mod bat;
@@ -18,7 +18,7 @@ pub struct Cli {
     pub command: Commands,
 }
 
-#[derive(clap::ValueEnum, Clone, Default)]
+#[derive(ValueEnum, Clone, Default)]
 pub enum DiffMode {
     #[default]
     Default, // Basic changes
@@ -46,9 +46,7 @@ pub enum Commands {
         quiet: bool,
     },
     /// Display contents of a file with syntax highlighting
-    Bat {
-        file: String,
-    },
+    Bat { file: String },
     /// List files and directories
     #[command(aliases = &["ls", "l"])]
     List {

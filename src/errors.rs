@@ -3,6 +3,9 @@ use std::io;
 use thiserror::Error;
 use zip::result::ZipError;
 
+#[cfg(feature = "cli")]
+use regex::Error as RegexError;
+
 /// Central error type for the zipcrawl library and CLI.
 ///
 /// Integrates with `miette` for rich terminal error reporting.
@@ -29,7 +32,7 @@ pub enum ZipCrawlError {
     InvalidRegex {
         regex: String,
         #[source]
-        source: regex::Error,
+        source: RegexError,
     },
 
     /// Errors occurring during the execution of an external command via the `x` command.

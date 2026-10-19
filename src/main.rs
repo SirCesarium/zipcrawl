@@ -15,7 +15,8 @@ use crate::archive::ZipManager;
 use crate::commands::{Cli, Commands};
 use clap::CommandFactory;
 use clap::Parser;
-use miette::{Report, Result};
+use clap_complete::CompleteEnv;
+use miette::{Report, Result, set_panic_hook};
 use std::env::args;
 use std::iter;
 use std::path::Path;
@@ -24,26 +25,41 @@ use std::process::exit;
 fn is_quiet(cmd: &Commands) -> bool {
     match cmd {
         #[cfg(feature = "exec")]
-        Commands::X { quiet, .. }
-        | Commands::Diff { quiet, .. }
-        | Commands::Cat { quiet, .. } => *quiet,
+        Commands::X { quiet, .. } | Commands::Diff { quiet, .. } | Commands::Cat { quiet, .. } => {
+            *quiet
+        }
         _ => false,
     }
 }
 
 fn main() -> Result<()> {
-    miette::set_panic_hook();
+    set_panic_hook();
 
-    clap_complete::CompleteEnv::with_factory(commands::Cli::command).complete();
+    CompleteEnv::with_factory(commands::Cli::command).complete();
 
     let all_args: Vec<String> = args().collect();
     let subcommands = [
-        "tree", "t", "cat", "bat", "list", "ls", "l", "find", "fd", "f", "grep", "g",
+        "tree",
+        "t",
+        "cat",
+        "bat",
+        "list",
+        "ls",
+        "l",
+        "find",
+        "fd",
+        "f",
+        "grep",
+        "g",
         #[cfg(feature = "exec")]
         "x",
         #[cfg(feature = "exec")]
         "exec",
-        "help", "diff", "d", "completions", "completion",
+        "help",
+        "diff",
+        "d",
+        "completions",
+        "completion",
     ];
 
     let sub_idx = all_args
@@ -93,9 +109,7 @@ fn main() -> Result<()> {
                     Commands::Cat { file, quiet } => {
                         commands::cat::handle(&mut manager, file, *quiet)
                     }
-                    Commands::Bat { file } => {
-                        commands::bat::handle(&mut manager, file)
-                    }
+                    Commands::Bat { file } => commands::bat::handle(&mut manager, file),
                     Commands::List { sizes } => commands::list::handle(&mut manager, *sizes),
                     Commands::Find {
                         regex,
@@ -137,7 +151,8 @@ fn main() -> Result<()> {
                         &mut manager,
                         base,
                         !matches!(mode, commands::DiffMode::Default),
-                        matches!(mode, commands::DiffMode::Stats) || matches!(mode, commands::DiffMode::Full),
+                        matches!(mode, commands::DiffMode::Stats)
+                            || matches!(mode, commands::DiffMode::Full),
                         matches!(mode, commands::DiffMode::Full),
                         matches!(mode, commands::DiffMode::Full),
                         include.as_deref(),

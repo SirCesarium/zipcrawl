@@ -3,12 +3,18 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::{Component, Path, PathBuf};
 use std::process::id as process_id;
-use zip::write::SimpleFileOptions;
 use zip::CompressionMethod;
 use zip::ZipWriter;
+use zip::write::SimpleFileOptions;
 
 #[cfg(feature = "serde")]
 use serde::Serialize;
+
+#[cfg(feature = "serde")]
+use serde_json::to_vec;
+
+#[cfg(feature = "serde")]
+use toml::to_string;
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -50,11 +56,12 @@ impl Default for CompressOptions {
 /// ```no_run
 /// use zipcrawl::compress::ZipCompressor;
 /// use std::path::Path;
+/// # use zipcrawl::ZipCrawlError;
 ///
 /// let mut compressor = ZipCompressor::new(Path::new("output.zip"))?;
 /// compressor.compress_file(Path::new("data.txt"), "data.txt")?;
 /// compressor.finish()?;
-/// # Ok::<_, zipcrawl::ZipCrawlError>(())
+/// # Ok::<_, ZipCrawlError>(())
 /// ```
 pub struct ZipCompressor {
     output_path: PathBuf,
@@ -340,13 +347,11 @@ impl ZipCompressor {
             .map(str::to_lowercase);
 
         let bytes = match extension.as_deref() {
-            Some("json") => {
-                serde_json::to_vec(data).map_err(|e| ZipCrawlError::SerializeError {
-                    file: name.to_string(),
-                    details: e.to_string(),
-                })?
-            }
-            Some("toml") => toml::to_string(data)
+            Some("json") => to_vec(data).map_err(|e| ZipCrawlError::SerializeError {
+                file: name.to_string(),
+                details: e.to_string(),
+            })?,
+            Some("toml") => to_string(data)
                 .map_err(|e| ZipCrawlError::SerializeError {
                     file: name.to_string(),
                     details: e.to_string(),
@@ -356,7 +361,7 @@ impl ZipCompressor {
                 return Err(ZipCrawlError::SerializeError {
                     file: name.to_string(),
                     details: format!("unsupported extension: {:?}", extension),
-                })
+                });
             }
         };
 
@@ -511,9 +516,10 @@ mod tests {
     use super::*;
     use crate::archive::ZipManager;
     use std::io::Cursor;
+    use tempfile::{TempDir, tempdir};
 
-    fn test_source_dir() -> tempfile::TempDir {
-        let dir = tempfile::tempdir().unwrap();
+    fn test_source_dir() -> TempDir {
+        let dir = tempdir().unwrap();
         fs::write(dir.path().join("file.txt"), b"hello world").unwrap();
         fs::create_dir_all(dir.path().join("sub")).unwrap();
         fs::write(dir.path().join("sub/nested.txt"), b"nested content").unwrap();
@@ -523,7 +529,7 @@ mod tests {
     #[test]
     fn compress_reader_to_end_writes_all_data() {
         let src = test_source_dir();
-        let dest = tempfile::tempdir().unwrap();
+        let dest = tempdir().unwrap();
         let zip_path = dest.path().join("out.zip");
         let data = fs::read(src.path().join("file.txt")).unwrap();
 
@@ -540,7 +546,7 @@ mod tests {
 
     #[test]
     fn compress_reader_to_end_enforces_size_limit() {
-        let dest = tempfile::tempdir().unwrap();
+        let dest = tempdir().unwrap();
         let zip_path = dest.path().join("out.zip");
         let big_data = vec![0u8; 100];
 
@@ -557,7 +563,7 @@ mod tests {
 
     #[test]
     fn compress_reader_to_end_rejects_traversal() {
-        let dest = tempfile::tempdir().unwrap();
+        let dest = tempdir().unwrap();
         let zip_path = dest.path().join("out.zip");
         let mut compressor = ZipCompressor::new(&zip_path).unwrap();
         let err = compressor
@@ -569,7 +575,7 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn serialize_and_add_json() {
-        let dest = tempfile::tempdir().unwrap();
+        let dest = tempdir().unwrap();
         let zip_path = dest.path().join("out.zip");
 
         #[derive(Serialize)]
@@ -598,7 +604,7 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn serialize_and_add_toml() {
-        let dest = tempfile::tempdir().unwrap();
+        let dest = tempdir().unwrap();
         let zip_path = dest.path().join("out.zip");
 
         #[derive(Serialize)]
@@ -628,7 +634,7 @@ mod tests {
     #[cfg(feature = "serde")]
     #[test]
     fn serialize_and_add_unsupported_ext() {
-        let dest = tempfile::tempdir().unwrap();
+        let dest = tempdir().unwrap();
         let zip_path = dest.path().join("out.zip");
         #[derive(Serialize)]
         struct Data {

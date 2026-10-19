@@ -2,7 +2,8 @@ use crate::archive::ZipManager;
 use crate::display::TreeWriter;
 use crate::errors::ZipCrawlError;
 use colored::Colorize;
-use regex::Regex;
+use glob::Pattern;
+use regex::{Captures, Regex};
 use std::io::{BufRead, BufReader};
 
 pub fn handle(
@@ -18,7 +19,7 @@ pub fn handle(
 
     let glob_matcher = glob_filter
         .map(|g| {
-            glob::Pattern::new(g).map_err(|_| ZipCrawlError::InvalidGlob {
+            Pattern::new(g).map_err(|_| ZipCrawlError::InvalidGlob {
                 glob: g.to_string(),
             })
         })
@@ -61,9 +62,8 @@ pub fn handle(
                     }
 
                     let line_num = (idx + 1).to_string().dimmed();
-                    let highlighted = re.replace_all(&line, |caps: &regex::Captures| {
-                        caps[0].red().bold().to_string()
-                    });
+                    let highlighted =
+                        re.replace_all(&line, |caps: &Captures| caps[0].red().bold().to_string());
 
                     println!("  {} {}", line_num, highlighted.trim());
                 }
