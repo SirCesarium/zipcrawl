@@ -2,12 +2,11 @@ use crate::errors::ZipCrawlError;
 use core::fmt;
 use std::fs;
 use std::fs::File;
-use std::io;
-use std::io::Read;
+use std::io::{self, Cursor, Read, Seek};
 use std::path::Component::ParentDir;
 use std::path::Path;
-use zip::read::ZipFile;
 use zip::ZipArchive;
+use zip::read::ZipFile;
 
 #[cfg(feature = "serde")]
 use serde::de::DeserializeOwned;
@@ -27,64 +26,22 @@ pub struct ZipEntry {
 
 /// Core manager for ZIP archive operations.
 ///
+/// Generic over the underlying reader so an archive can be opened from a file
+/// on disk ([`File`]) or from an in-memory buffer ([`Cursor`]).
+///
 /// Handles file access, security validations (Zip Bombs/Traversal),
 /// and metadata extraction.
-pub struct ZipManager {
-    archive: ZipArchive<File>,
+pub struct ZipManager<R: Read + Seek = File> {
+    archive: ZipArchive<R>,
     /// The source path of the ZIP file on the system.
     pub path_name: String,
-    /// Keeps a temp file alive when the archive was created from a reader.
-    #[allow(dead_code)]
-    _tempfile: Option<tempfile::NamedTempFile>,
 }
 
-impl ZipManager {
+impl<R: Read + Seek> ZipManager<R> {
     /// Ratio at which a file is considered a potential Zip Bomb.
     const MAX_RATIO: u64 = 100;
     /// Maximum allowed uncompressed size (1GB) to prevent memory exhaustion.
     const MAX_SIZE: u64 = 1024 * 1024 * 1024;
-
-    /// Creates a new manager and opens the ZIP archive at the specified path.
-    pub fn new(path: &Path) -> Result<Self, ZipCrawlError> {
-        let file = File::open(path).map_err(|e| ZipCrawlError::IoError {
-            path: path.to_string_lossy().to_string(),
-            source: e,
-        })?;
-        let archive = ZipArchive::new(file)?;
-        Ok(Self {
-            archive,
-            path_name: path.to_string_lossy().to_string(),
-            _tempfile: None,
-        })
-    }
-
-    /// Creates a manager from any `Read` source (e.g. stdin, network).
-    ///
-    /// The content is buffered into a temporary file on disk, then opened
-    /// as a standard ZIP archive. The temp file is kept alive for the
-    /// lifetime of `ZipManager`.
-    #[allow(dead_code)]
-    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Self, ZipCrawlError> {
-        let mut tmp = tempfile::NamedTempFile::new().map_err(|e| ZipCrawlError::IoError {
-            path: String::from("<tempfile>"),
-            source: e,
-        })?;
-        io::copy(reader, &mut tmp).map_err(|e| ZipCrawlError::IoError {
-            path: String::from("<stream>"),
-            source: e,
-        })?;
-        let path = tmp.path().to_owned();
-        let file = File::open(&path).map_err(|e| ZipCrawlError::IoError {
-            path: path.to_string_lossy().to_string(),
-            source: e,
-        })?;
-        let archive = ZipArchive::new(file)?;
-        Ok(Self {
-            archive,
-            path_name: String::from("<stream>"),
-            _tempfile: Some(tmp),
-        })
-    }
 
     /// Returns a flat list of all entries contained in the archive.
     pub fn entries(&mut self) -> Result<Vec<ZipEntry>, ZipCrawlError> {
@@ -107,7 +64,7 @@ impl ZipManager {
     /// # Security
     /// - Performs path traversal checks (rejects `..` components).
     /// - Validates against Zip Bomb characteristics (abnormal compression ratios or excessive size).
-    pub fn open_file(&mut self, name: &str) -> Result<ZipFile<'_, File>, ZipCrawlError> {
+    pub fn open_file(&mut self, name: &str) -> Result<ZipFile<'_, R>, ZipCrawlError> {
         let file = self
             .archive
             .by_name(name)
@@ -168,7 +125,7 @@ impl ZipManager {
     /// ```
     pub fn stream_file<F, T>(&mut self, name: &str, mut f: F) -> Result<T, ZipCrawlError>
     where
-        F: FnMut(&mut ZipFile<'_, File>) -> Result<T, ZipCrawlError>,
+        F: FnMut(&mut ZipFile<'_, R>) -> Result<T, ZipCrawlError>,
     {
         let mut file = self.open_file(name)?;
         f(&mut file)
@@ -290,7 +247,50 @@ impl ZipManager {
     }
 }
 
-impl fmt::Debug for ZipManager {
+impl ZipManager<File> {
+    /// Creates a new manager and opens the ZIP archive at the specified path.
+    pub fn new(path: &Path) -> Result<Self, ZipCrawlError> {
+        let file = File::open(path).map_err(|e| ZipCrawlError::IoError {
+            path: path.to_string_lossy().to_string(),
+            source: e,
+        })?;
+
+        let archive = ZipArchive::new(file)?;
+
+        Ok(Self {
+            archive,
+            path_name: path.to_string_lossy().to_string(),
+        })
+    }
+}
+
+impl ZipManager<Cursor<Vec<u8>>> {
+    /// Creates a manager from any `Read` source (e.g. stdin, network).
+    ///
+    /// The stream is buffered in memory, which suits data that already lives
+    /// in RAM or comfortably fits in it. For very large streams, write the
+    /// archive to a file first and open it with [`ZipManager::new`].
+    #[allow(dead_code)]
+    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Self, ZipCrawlError> {
+        let mut buffer = Vec::new();
+
+        reader
+            .read_to_end(&mut buffer)
+            .map_err(|e| ZipCrawlError::IoError {
+                path: String::from("<stream>"),
+                source: e,
+            })?;
+
+        let archive = ZipArchive::new(Cursor::new(buffer))?;
+
+        Ok(Self {
+            archive,
+            path_name: String::from("<stream>"),
+        })
+    }
+}
+
+impl<R: Read + Seek> fmt::Debug for ZipManager<R> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ZipManager")
             .field("path_name", &self.path_name)
