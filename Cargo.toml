@@ -15,7 +15,10 @@ colored = { version = "3.1.1", optional = true }
 miette = { version = "7.6.0", features = ["fancy"], optional = true }
 regex = { version = "1.12.3", optional = true }
 thiserror = "2.0.18"
-zip = "9.0.1"
+# Deflate only (pure Rust: flate2/zlib-rs + zopfli) so the library tree stays
+# free of C codecs and compiles for wasm32. Enable `full-zip` for every
+# compression method zip supports.
+zip = { version = "9.0.1", default-features = false, features = ["deflate"] }
 clap = { version = "4.6.1", features = ["derive"], optional = true }
 glob = { version = "0.3.3", optional = true }
 similar = { version = "3.1.1", optional = true }
@@ -39,10 +42,22 @@ cli = [
     "dep:similar",
     "dep:minus",
     "dep:syntect",
+    # The shipped CLI should open any ZIP, not just deflate/stored ones.
+    "full-zip",
 ]
 exec = []
 compress = []
 serde = ["dep:serde", "dep:serde_json", "dep:toml"]
+full-zip = [
+    "zip/aes-crypto",
+    "zip/bzip2",
+    "zip/deflate64",
+    "zip/lzma",
+    "zip/ppmd",
+    "zip/time",
+    "zip/xz",
+    "zip/zstd",
+]
 
 [[bin]]
 name = "zipcrawl"
