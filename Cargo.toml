@@ -12,7 +12,7 @@ categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 colored = { version = "3.1.1", optional = true }
-miette = { version = "7.6.0", features = ["fancy"] }
+miette = { version = "7.6.0", features = ["fancy"], optional = true }
 regex = { version = "1.12.3", optional = true }
 thiserror = "2.0.18"
 zip = "9.0.1"
@@ -33,6 +33,7 @@ cli = [
     "dep:clap",
     "dep:clap_complete",
     "dep:colored",
+    "dep:miette",
     "dep:regex",
     "dep:glob",
     "dep:similar",
