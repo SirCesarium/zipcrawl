@@ -1,0 +1,167 @@
+name: Bug report
+description: Report a problem with zipcrawl
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the sections below so we can reproduce and fix the issue.
+
+        Before opening a new issue, please search the existing issues to avoid duplicates.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of the bug.
+      placeholder: What went wrong?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the exact command you ran, with the archive path and every flag.
+      placeholder: |
+        1. Run `zipcrawl archive.zip grep FATAL --glob "*.log"`
+        2. ...
+        3. See error
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened? Include the full output or error message.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: zipcrawl version
+      description: Run `zipcrawl --version` and paste the output here.
+      placeholder: "4.0.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: architecture
+    attributes:
+      label: Architecture
+      description: The CPU architecture you are running on.
+      placeholder: "x86_64, aarch64, ..."
+
+  - type: dropdown
+    id: install_method
+    attributes:
+      label: Installation method
+      description: How did you install zipcrawl?
+      options:
+        - install.sh script
+        - cargo install
+        - GitHub release binary
+        - Built from source
+        - Distribution package
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: shell
+    attributes:
+      label: Shell
+      description: Which shell were you using? Completion and piping issues depend on it.
+      options:
+        - bash
+        - zsh
+        - fish
+        - PowerShell
+        - cmd
+        - Nushell
+        - Other
+        - Not applicable
+    validations:
+      required: true
+
+  - type: dropdown
+    id: nerdfonts
+    attributes:
+      label: NerdFont icons
+      description: Did you install the default build (icons) or the plain build?
+      options:
+        - Default build with NerdFont icons
+        - Plain build (`--no-default-features --features cli`)
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: terminal
+    attributes:
+      label: Terminal or multiplexer
+      description: Optional, but useful for rendering and color issues.
+      placeholder: "Windows Terminal, Alacritty, iTerm2, tmux, ..."
+
+  - type: textarea
+    id: archive
+    attributes:
+      label: Archive details
+      description: How was the archive created? Mention compression method, encryption, ZIP64, split archives, size, and whether it can be shared.
+      placeholder: |
+        Created with: 7-Zip 24.09
+        Compression: Deflate64
+        Encrypted: no
+        Size: 1.2 GB, ZIP64
+        Shareable: yes / no
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or backtrace
+      description: Run with `RUST_BACKTRACE=1` and paste the relevant output.
+      render: shell
+      placeholder: |
+        RUST_BACKTRACE=1 zipcrawl archive.zip tree
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Add any other context, links, or a minimal reproduction archive if you can share one.
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I have searched the existing issues and this is not a duplicate.
+          required: true
+        - label: I have removed any sensitive files or data from the information above.
+          required: true

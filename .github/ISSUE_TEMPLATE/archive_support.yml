@@ -1,0 +1,81 @@
+name: Archive support
+description: Request support for a compression method, encryption, or archive variant
+title: "[Archive]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template to request support for a ZIP feature that zipcrawl does not handle yet.
+
+        Before opening a request, check the archive entries and compression methods in the README, and try the `full-zip` feature: the shipped CLI enables it, the library keeps only Deflate by default.
+
+  - type: input
+    id: name
+    attributes:
+      label: Compression method, encryption, or variant
+      description: The name of the ZIP feature you want supported.
+      placeholder: "Example: Zstandard, AES-256, Deflate64, split archives, ZIP64"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Type
+      description: What kind of ZIP feature is this?
+      options:
+        - Compression method
+        - Encryption
+        - Archive layout (split, spanned, ZIP64)
+        - Metadata or extended fields
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: docs
+    attributes:
+      label: Documentation or specification
+      description: Link to the official specification or the tool's documentation.
+      placeholder: "https://..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: sample
+    attributes:
+      label: How to produce a sample archive
+      description: The exact commands or tool settings needed to create an archive that uses this feature.
+      placeholder: |
+        zip -Z zstd archive.zip file.txt
+        # or: 7z a -t7z archive.7z ...
+      render: shell
+    validations:
+      required: true
+
+  - type: dropdown
+    id: full_zip
+    attributes:
+      label: Does the `full-zip` feature handle it?
+      description: The shipped CLI enables `full-zip`; the library does not by default.
+      options:
+        - Yes, it works with `full-zip`
+        - No, it fails with `full-zip` too
+        - Not tried yet
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Add any other details, links, or sample archives that would help implement support.
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I have searched the existing issues and this is not a duplicate.
+          required: true
