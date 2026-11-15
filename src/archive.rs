@@ -49,6 +49,19 @@ impl<R: Read + Seek> ZipManager<R> {
     /// Maximum allowed uncompressed size (1GB) to prevent memory exhaustion.
     const MAX_SIZE: u64 = 1024 * 1024 * 1024;
 
+    /// Whether an entry's declared sizes trip the Zip Bomb heuristics.
+    ///
+    /// Both sizes come from the archive headers, so the check runs before any
+    /// bytes are read or decompressed.
+    fn exceeds_expansion_limits(uncompressed: u64, compressed: u64) -> bool {
+        if uncompressed > Self::MAX_SIZE {
+            return true;
+        }
+
+        // Integer division would truncate a 100.9 ratio down to 100 and let it pass.
+        compressed > 0 && uncompressed > compressed.saturating_mul(Self::MAX_RATIO)
+    }
+
     /// Returns a flat list of all entries contained in the archive.
     pub fn entries(&mut self) -> Result<Vec<ZipEntry>, ZipCrawlError> {
         let len = self.archive.len();
@@ -91,17 +104,7 @@ impl<R: Read + Seek> ZipManager<R> {
             });
         }
 
-        let compressed = file.compressed_size();
-        let uncompressed = file.size();
-
-        // Security Check: Zip Bomb detection
-        if uncompressed > Self::MAX_SIZE {
-            return Err(ZipCrawlError::ZipBombDetected {
-                filename: name.to_string(),
-            });
-        }
-
-        if compressed > 0 && (uncompressed / compressed) > Self::MAX_RATIO {
+        if Self::exceeds_expansion_limits(file.size(), file.compressed_size()) {
             return Err(ZipCrawlError::ZipBombDetected {
                 filename: name.to_string(),
             });
@@ -344,6 +347,28 @@ mod tests {
         }
         zip.finish().unwrap();
         buf.into_inner()
+    }
+
+    #[test]
+    fn expansion_limits_accept_ratio_at_the_limit() {
+        assert!(!ZipManager::<File>::exceeds_expansion_limits(1_000, 10));
+    }
+
+    #[test]
+    fn expansion_limits_reject_ratio_past_the_limit() {
+        // 100.9:1 used to slip through: `uncompressed / compressed` truncated to 100.
+        assert!(ZipManager::<File>::exceeds_expansion_limits(1_009, 10));
+    }
+
+    #[test]
+    fn expansion_limits_ignore_stored_entries() {
+        assert!(!ZipManager::<File>::exceeds_expansion_limits(1_000, 0));
+    }
+
+    #[test]
+    fn expansion_limits_reject_oversized_entries() {
+        let over = ZipManager::<File>::MAX_SIZE + 1;
+        assert!(ZipManager::<File>::exceeds_expansion_limits(over, over));
     }
 
     #[test]
