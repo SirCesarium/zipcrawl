@@ -7,14 +7,24 @@
 Explore and stream ZIP archives without extracting them.
 
 ```bash
-zipcrawl archive.zip tree                    # directory tree
-zipcrawl archive.zip list                    # flat listing
-zipcrawl archive.zip cat config.json         # stream file to stdout
-zipcrawl archive.zip grep "FATAL" --glob "*.log"
-zipcrawl archive.zip find "*.rs" --glob
-zipcrawl archive.zip x deploy.sh bash        # pipe file into a command
-zipcrawl v2.zip diff --base v1.zip           # compare two archives
+zipcrawl logs.zip grep "FATAL" --glob "*.log"   # search inside every entry
+zipcrawl v2.zip diff --base v1.zip              # what changed between two archives
+zipcrawl mods.zip x deploy.sh bash              # pipe an entry into a command
+zipcrawl archive.zip cat config.json            # stream one file to stdout
+zipcrawl archive.zip find "*.rs" --glob         # locate entries by pattern
+zipcrawl archive.zip tree                       # directory tree
+zipcrawl archive.zip list                       # flat listing
 ```
+
+## What this does that `unzip` does not
+
+`unzip -l` lists, `unzip -p` prints one file, `zipgrep` searches. They all make you
+name the entry first, and none of them compares archives:
+
+- **Search across every entry** with glob and subdirectory filters, without writing to disk.
+- **Diff two archives** by structure, stats, or content.
+- **Pipe an entry into another program** without a temporary file.
+- **Complete entry paths in your shell**: `zipcrawl mods.zip cat <TAB>` reads the file list from inside the archive (see [Completions](#completions)).
 
 ## Install
 
