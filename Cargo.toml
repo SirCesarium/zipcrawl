@@ -1,6 +1,6 @@
 [package]
 name = "zipcrawl"
-version = "4.0.2"
+version = "4.0.3"
 edition = "2024"
 authors = ["SirCesarium"]
 description = "Ergonomic API/Cli for ZIP archives"
