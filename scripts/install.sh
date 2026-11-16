@@ -51,9 +51,9 @@ download_binary() {
 
     chmod +x "$dest"
     mkdir -p "$BIN_DIR"
-    cp "$dest" "$BIN_DIR/zipcrawl"
+    cp "$dest" "$BIN_DIR/zipcrawl$ext"
     rm -rf "$tmp"
-    echo "$BIN_DIR/zipcrawl"
+    echo "$BIN_DIR/zipcrawl$ext"
 }
 
 install_via_cargo() {
@@ -190,29 +190,10 @@ BASHEOF
     fi
 }
 
-ask_nerdfonts() {
-    local hr
-    hr="$(printf '─%.0s' {1..50})"
-    echo "$hr" >&2
-    echo "  󰉋      󰈔  — can you see these icons?" >&2
-    echo "  (NerdFont adds file-type icons to list/tree/bat output)" >&2
-    echo "  Type 'y' → cargo install zipcrawl (compiles from source)" >&2
-    echo "  Type 'N' → download prebuilt binary (no icons, faster)" >&2
-    echo "$hr" >&2
-    local ans
-    read -r -p "  Want to add Nerd Fonts Feature? (n): " ans < /dev/tty || return 1
-    case "$ans" in
-        [yY]|[yY][eE][sS]) return 0 ;;
-        *) return 1 ;;
-    esac
-}
-
 main() {
     local bin
 
-    if ask_nerdfonts; then
-        bin="$(install_via_cargo)"
-    elif detect &>/dev/null; then
+    if detect &>/dev/null; then
         bin="$(download_binary)"
         echo "-> Installed to $bin" >&2
         echo "-> Add to PATH: export PATH=\"\$PATH:$BIN_DIR\"" >&2
