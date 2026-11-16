@@ -22,9 +22,9 @@ zipcrawl v2.zip diff --base v1.zip
 Use it to inspect release artifacts, JARs, mod packs, and log bundles. Rust code gets the same entry access through the library API.
 
 <div align="center">
-  <img src="assets/zipcrawl-tree.png" width="38%" alt="zipcrawl tree output" />
+  <img src="assets/zipcrawl-tree.png" width="45%" alt="zipcrawl tree output" />
   &nbsp;&nbsp;
-  <img src="assets/zipcrawl-grep.png" width="38%" alt="zipcrawl grep output" />
+  <img src="assets/zipcrawl-grep.png" width="45%" alt="zipcrawl grep output" />
 </div>
 
 ## CLI behavior
@@ -38,9 +38,9 @@ Every command has the same shape: `zipcrawl <archive> <command> [args]`.
 - zipcrawl exits 1 when an archive cannot be opened or a zipcrawl command fails.
 
 <div align="center">
-  <img src="assets/zipcrawl-diff.png" width="38%" alt="zipcrawl diff output" />
+  <img src="assets/zipcrawl-diff.png" width="45%" alt="zipcrawl diff output" />
   &nbsp;&nbsp;
-  <img src="assets/zipcrawl-cat.png" width="38%" alt="zipcrawl cat piped to jq" />
+  <img src="assets/zipcrawl-cat.png" width="45%" alt="zipcrawl cat piped to jq" />
 </div>
 
 ## Commands
