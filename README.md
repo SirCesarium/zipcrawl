@@ -115,31 +115,62 @@ Output:
 zipcrawl archive.zip x config.json -- python3 -m json.tool
 ```
 
+## Features
+
+- Read, search, and stream entries without extracting the archive.
+- One command shape, `zipcrawl <archive> <command>`, across `tree`, `list`, `find`, `grep`, `cat`, `bat`, `x`, and `diff`.
+- Zip-bomb and path-traversal guards on every entry read.
+- The same entry access from Rust through `ZipManager`.
+
+Cargo features:
+
+| Feature | Default | Adds |
+|---------|---------|------|
+| `cli` | yes | The `zipcrawl` binary |
+| `nerdfonts` | yes | File-type icons in CLI output |
+| `exec` | yes | The `x` command |
+| `compress` | no | `ZipCompressor` |
+| `serde` | no | JSON and TOML helpers |
+| `full-zip` | no, enabled by `cli` | bzip2, deflate64, lzma, ppmd, xz, zstd, and AES |
+
 ## Install
 
-With Cargo:
+### Quick downloads
+
+<div align="center">
+
+<a href="https://github.com/SirCesarium/zipcrawl/releases/latest/download/zipcrawl-windows-x86_64.msi"><img src="assets/button-windows.png" width="180" alt="zipcrawl Windows installer"></a>
+<a href="https://github.com/SirCesarium/zipcrawl/releases/latest/download/zipcrawl-linux-amd64.deb"><img src="assets/button-debian.png" width="180" alt="zipcrawl Debian package"></a>
+<a href="https://github.com/SirCesarium/zipcrawl/releases/latest/download/zipcrawl-linux-x86_64.rpm"><img src="assets/button-fedora.png" width="180" alt="zipcrawl Fedora package"></a>
+<a href="https://github.com/SirCesarium/zipcrawl/releases/latest/download/zipcrawl-macos-arm64"><img src="assets/button-macos.png" width="180" alt="zipcrawl macOS binary"></a>
+
+</div>
+
+Every prebuilt binary ships with all features: NerdFont icons, `x`, shell completions, and every compression method `zip` supports.
+
+| Platform | Asset |
+| --- | --- |
+| Windows x86_64 | `zipcrawl-windows-x86_64.msi` or `zipcrawl-windows-x86_64.exe` |
+| Debian/Ubuntu | `zipcrawl-linux-amd64.deb` or `zipcrawl-linux-arm64.deb` |
+| Fedora/RHEL | `zipcrawl-linux-x86_64.rpm` or `zipcrawl-linux-aarch64.rpm` |
+| macOS | `zipcrawl-macos-arm64` or `zipcrawl-macos-x86_64` |
+| Linux (musl) | `zipcrawl-linux-x86_64-musl` or `zipcrawl-linux-arm64-musl` |
+
+### Install script
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SirCesarium/zipcrawl/main/scripts/install.sh | bash
+```
+
+The script downloads the prebuilt binary for your platform, installs it to `~/.local/bin`, and adds completions for fish, zsh, and bash when those shells are present. Set `ZIPCRAWL_BIN_DIR` to change the install directory. On platforms without a prebuilt binary it falls back to `cargo install`.
+
+### With Cargo
 
 ```bash
 cargo install zipcrawl
 ```
 
 Default features include NerdFont icons and the `x` command.
-
-Prebuilt binary:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/SirCesarium/zipcrawl/main/scripts/install.sh | bash
-```
-
-The script installs to `~/.local/bin`, adds completions for fish, zsh, and bash when those shells are present, and asks about NerdFonts. Set `ZIPCRAWL_BIN_DIR` to change the install directory. Answering yes runs `cargo install zipcrawl` instead, which needs a Rust toolchain.
-
-Prebuilt binaries exist for Linux x86_64 and arm64 (musl), macOS x86_64 and arm64, and Windows x86_64. They are built with `--no-default-features --features cli`, so they have no NerdFont icons and no `x`. On a supported platform, answering no to the NerdFont prompt downloads one of these.
-
-To keep `x` without icons:
-
-```bash
-cargo install zipcrawl --no-default-features --features "cli,exec"
-```
 
 ## Completions
 
@@ -198,16 +229,7 @@ fn main() -> Result<(), ZipCrawlError> {
 
 With the `compress` feature, `ZipCompressor` writes to a temporary file and renames it on `finish`. With `serde`, `read_and_deserialize` and `serialize_and_add` handle JSON and TOML.
 
-| Feature | Default | Adds |
-|---------|---------|------|
-| `cli` | yes | The `zipcrawl` binary |
-| `nerdfonts` | yes | File-type icons in CLI output |
-| `exec` | yes | The `x` command |
-| `compress` | no | `ZipCompressor` |
-| `serde` | no | JSON and TOML helpers |
-| `full-zip` | no, enabled by `cli` | bzip2, deflate64, lzma, ppmd, xz, zstd, and AES |
-
-With `default-features = false`, the library reads stored and deflate entries. Enable `full-zip` for the other methods.
+See [Features](#features) for the Cargo feature flags. With `default-features = false`, the library reads stored and deflate entries. Enable `full-zip` for the other methods.
 
 ## Limits
 
@@ -218,4 +240,4 @@ With `default-features = false`, the library reads stored and deflate entries. E
 
 ## License
 
-[MIT](LICENSE)
+Distributed under the [MIT License](LICENSE).
