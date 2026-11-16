@@ -3,7 +3,7 @@ name = "zipcrawl"
 version = "4.0.2"
 edition = "2024"
 authors = ["SirCesarium"]
-description = "Explore and stream ZIP archives without even extracting them."
+description = "Ergonomic API/Cli for ZIP archives"
 license = "MIT"
 repository = "https://github.com/SirCesarium/zipcrawl"
 readme = "README.md"
@@ -66,3 +66,21 @@ required-features = ["cli"]
 
 [dev-dependencies]
 tempfile = "3.27.0"
+
+[package.metadata.deb]
+maintainer = "Cesarium <239650612+SirCesarium@users.noreply.github.com>"
+copyright = "2026, Cesarium"
+license-file = ["LICENSE", "0"]
+section = "utility"
+depends = "$auto"
+extended-description = "Explore and stream ZIP archives from the terminal."
+assets = [
+    ["target/release/zipcrawl", "usr/bin/", "755"],
+    ["README.md", "usr/share/doc/zipcrawl/README.md", "644"],
+]
+
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/zipcrawl", dest = "/usr/bin/zipcrawl", mode = "755" },
+    { source = "LICENSE", dest = "/usr/share/licenses/zipcrawl/LICENSE", mode = "644" },
+]

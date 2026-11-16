@@ -1,0 +1,209 @@
+name: Build
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cli:
+    name: ${{ matrix.asset }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-26.04
+            asset: zipcrawl-linux-x86_64-musl
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-26.04-arm
+            asset: zipcrawl-linux-arm64-musl
+          - target: x86_64-apple-darwin
+            os: macos-26
+            asset: zipcrawl-macos-x86_64
+          - target: aarch64-apple-darwin
+            os: macos-26
+            asset: zipcrawl-macos-arm64
+          - target: x86_64-pc-windows-msvc
+            os: windows-2025
+            asset: zipcrawl-windows-x86_64
+            exe: .exe
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+          cache: true
+
+      - name: Install musl toolchain
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y musl-tools
+
+          target_upper=$(echo "${{ matrix.target }}" | tr 'a-z-' 'A-Z_')
+          echo "CARGO_TARGET_${target_upper}_LINKER=musl-gcc" >> "$GITHUB_ENV"
+
+      - name: Build binary
+        shell: bash
+        run: cargo build --locked --release --target "${{ matrix.target }}" --all-features
+
+      - name: Stage binary
+        shell: bash
+        run: |
+          mkdir -p _packages
+          cp "target/${{ matrix.target }}/release/zipcrawl${{ matrix.exe }}" \
+             "_packages/${{ matrix.asset }}${{ matrix.exe }}"
+
+      - name: Install Linux packaging tools
+        if: runner.os == 'Linux'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deb,cargo-generate-rpm
+
+      - name: Build .deb package
+        if: runner.os == 'Linux'
+        shell: bash
+        run: cargo deb --no-build --target "${{ matrix.target }}" -o _packages/
+
+      - name: Build .rpm package
+        if: runner.os == 'Linux'
+        shell: bash
+        run: cargo generate-rpm --target "${{ matrix.target }}" -o _packages/
+
+      - name: Rename Linux packages
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          case "${{ matrix.target }}" in
+            x86_64-unknown-linux-musl)
+              deb="zipcrawl-linux-amd64.deb"
+              rpm="zipcrawl-linux-x86_64.rpm"
+              ;;
+            aarch64-unknown-linux-musl)
+              deb="zipcrawl-linux-arm64.deb"
+              rpm="zipcrawl-linux-aarch64.rpm"
+              ;;
+            *)
+              echo "unexpected Linux target: ${{ matrix.target }}" >&2
+              exit 1
+              ;;
+          esac
+
+          mv _packages/*.deb "_packages/$deb"
+          mv _packages/*.rpm "_packages/$rpm"
+
+      - name: Install WiX toolset
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: choco install wixtoolset --no-progress -y
+
+      - name: Install cargo-wix
+        if: runner.os == 'Windows'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-wix
+
+      - name: Configure WiX
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $wixDir = Get-ChildItem "${env:ProgramFiles(x86)}\WiX Toolset*" -Directory |
+            Sort-Object Name -Descending | Select-Object -First 1
+          if (-not $wixDir) {
+            throw "WiX toolset installation not found"
+          }
+          Add-Content $env:GITHUB_PATH "$($wixDir.FullName)\bin"
+
+      - name: Build .msi package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cargo wix init --force
+          cargo wix --no-build --target "${{ matrix.target }}" --target-bin-dir "target/${{ matrix.target }}/release" -o _packages/
+
+      - name: Rename MSI installer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem _packages/*.msi | Select-Object -First 1
+          if (-not $msi) {
+            throw "MSI installer not found"
+          }
+          Move-Item $msi.FullName "_packages/zipcrawl-windows-x86_64.msi"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.asset }}
+          path: _packages/
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: [cli]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v2
+        with:
+          toolchain: stable
+          cache: true
+
+      - name: Verify tag matches crate version
+        shell: bash
+        run: |
+          version=$(cargo metadata --no-deps --format-version 1 | jq -r \
+            '.packages[] | select(.name == "zipcrawl") | .version')
+          tag="${GITHUB_REF_NAME#v}"
+
+          if [ "$tag" != "$version" ]; then
+            echo "error: tag v$tag does not match Cargo.toml version $version" >&2
+            exit 1
+          fi
+
+      - name: Publish to crates.io
+        shell: bash
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          version=$(cargo metadata --no-deps --format-version 1 | jq -r \
+            '.packages[] | select(.name == "zipcrawl") | .version')
+
+          if curl -fsS "https://crates.io/api/v1/crates/zipcrawl/$version" > /dev/null; then
+            echo "zipcrawl $version is already on crates.io, skipping"
+          else
+            cargo publish --locked
+          fi
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          merge-multiple: true
+          path: ./artifacts
+
+      - name: List artifacts
+        shell: bash
+        run: find ./artifacts -type f | sort
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          fail_on_unmatched_files: true
+          files: ./artifacts/*
+          generate_release_notes: true
